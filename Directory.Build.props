@@ -1,0 +1,20 @@
+<Project>
+
+  <!-- Settings shared by every project in the solution. MSBuild picks this file up automatically
+       for any project in this folder or below, so new projects get them with no extra setup. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Fail the build on warnings, so they get fixed instead of piling up. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Run the latest .NET code analyzers and enforce .editorconfig code style during build,
+         not just in the IDE. -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+</Project>

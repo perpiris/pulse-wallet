@@ -1,0 +1,22 @@
+# Let Git detect text files and normalize their line endings to LF in the repository.
+# Each developer's checkout uses their platform's line endings (CRLF on Windows, LF on Mac/Linux).
+* text=auto
+
+# Better diffs for C# (shows the method/class name in diff hunk headers)
+*.cs     text diff=csharp
+
+# Shell scripts must keep LF, even on Windows, or they fail in Linux containers and CI
+*.sh     text eol=lf
+
+# Windows-only scripts expect CRLF
+*.cmd    text eol=crlf
+*.bat    text eol=crlf
+*.ps1    text eol=crlf
+
+# Binary files: never touch line endings or try to diff them
+*.png    binary
+*.jpg    binary
+*.ico    binary
+*.pdf    binary
+*.dll    binary
+*.exe    binary

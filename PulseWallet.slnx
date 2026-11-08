@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PulseWallet.Api/PulseWallet.Api.csproj" />
+    <Project Path="src/PulseWallet.Application/PulseWallet.Application.csproj" />
+    <Project Path="src/PulseWallet.Domain/PulseWallet.Domain.csproj" />
+  </Folder>
+</Solution>
