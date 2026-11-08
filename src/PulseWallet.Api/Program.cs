@@ -1,5 +1,6 @@
 using PulseWallet.Api.Extensions;
 using PulseWallet.Application;
+using PulseWallet.Infrastructure;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddSerilogLogging(builder.Configuration)
     .AddApplication()
+    .AddInfrastructure(builder.Configuration)
     .AddApi()
     .AddDatabaseHealthChecks(builder.Configuration);
 

@@ -10,6 +10,7 @@ WORKDIR /src
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/PulseWallet.Domain/PulseWallet.Domain.csproj src/PulseWallet.Domain/
 COPY src/PulseWallet.Application/PulseWallet.Application.csproj src/PulseWallet.Application/
+COPY src/PulseWallet.Infrastructure/PulseWallet.Infrastructure.csproj src/PulseWallet.Infrastructure/
 COPY src/PulseWallet.Api/PulseWallet.Api.csproj src/PulseWallet.Api/
 RUN dotnet restore src/PulseWallet.Api/PulseWallet.Api.csproj
 
