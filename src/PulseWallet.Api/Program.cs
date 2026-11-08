@@ -8,9 +8,15 @@ builder.Services.AddSerilog((services, config) => config
     .ReadFrom.Services(services)
     .Enrich.FromLogContext());
 
+// Comes from the ConnectionStrings__PulseWallet environment variable in Docker (compose.yaml),
+// or from user secrets when running locally. Never from appsettings, so no password is committed.
+var connectionString = builder.Configuration.GetConnectionString("PulseWallet")
+    ?? throw new InvalidOperationException("Connection string 'PulseWallet' is not configured.");
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddSqlServer(connectionString, name: "sqlserver");  // /health reports Unhealthy if the database can't be reached
 
 var app = builder.Build();
 

@@ -1,0 +1,66 @@
+# Local development stack: SQL Server + the API.
+#   docker compose up --build        start everything (API at http://localhost:5147/swagger)
+#   docker compose down              stop (data is kept in the sqlserver-data volume)
+#   docker compose down -v           stop and delete the database
+#
+# The SQL Server password comes from the .env file next to this one.
+
+name: pulsewallet
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer   # free edition for development and testing
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
+    ports:
+      - "1433:1433"          # also reachable from your machine (Rider, SSMS, Azure Data Studio) on localhost,1433
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      # Healthy once SQL Server accepts logins, not just when the container has started.
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # One-off job: creates the PulseWallet database if it doesn't exist yet, then exits.
+  # Once you add EF Core migrations, they'll create the tables inside it.
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    entrypoint:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -C
+      - -S
+      - sqlserver
+      - -U
+      - sa
+      - -P
+      - ${MSSQL_SA_PASSWORD}
+      - -b
+      - -Q
+      - IF DB_ID('PulseWallet') IS NULL CREATE DATABASE PulseWallet;
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/PulseWallet.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Overrides ConnectionStrings:PulseWallet. "sqlserver" is the service name above, resolved by Docker's network.
+      # TrustServerCertificate is needed because the dev SQL Server uses a self-signed certificate.
+      ConnectionStrings__PulseWallet: "Server=sqlserver,1433;Database=PulseWallet;User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+    ports:
+      - "5147:8080"
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+
+volumes:
+  sqlserver-data:

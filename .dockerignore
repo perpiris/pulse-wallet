@@ -1,0 +1,10 @@
+# Keep the Docker build context small and avoid copying local build output or secrets into images.
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/*.user
+.git/
+.env
+**/Dockerfile*
+compose*.yaml
