@@ -64,10 +64,11 @@ Secondary for this project, possible later:
 **Wallets**
 - [x] `Wallet` entity with username rules
 - [x] EF Core mapping for wallets
-- [ ] Create wallet: save to the database, return 201 *(in progress)*
-- [ ] Error handling with ProblemDetails (400 / 409)
-- [ ] Database migrations
-- [ ] Get wallet by ID
+- [x] Create wallet: save to the database, return 201 with `Location`
+- [x] Get wallet by ID (200 / 404)
+- [x] Error handling with ProblemDetails (400 / 404 / 409 / 500)
+- [x] Database migrations (`InitialCreate`)
+- [ ] Apply migrations automatically at startup (Development only)
 
 **Transactions**
 - [ ] Top up and withdraw
@@ -151,7 +152,11 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
    ```bash
    docker compose up --build -d
    ```
-3. Open:
+3. Create the tables (needed once per new database, until migrations are applied automatically at startup; uses the user secret from "Running from the IDE" below):
+   ```bash
+   dotnet ef database update --project src/PulseWallet.Infrastructure --startup-project src/PulseWallet.Api
+   ```
+4. Open:
    - Swagger UI: http://localhost:5147/swagger
    - Health check: http://localhost:5147/health
 
