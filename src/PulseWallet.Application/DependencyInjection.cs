@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using PulseWallet.Application.Wallets.CreateWallet;
+using PulseWallet.Application.Wallets.GetWalletById;
 
 namespace PulseWallet.Application;
 
@@ -12,6 +13,8 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<CreateWalletHandler>();
+        services.AddScoped<GetWalletByIdHandler>();
+
         services.AddSingleton(TimeProvider.System);
 
         return services;

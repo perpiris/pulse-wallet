@@ -1,4 +1,5 @@
-﻿using PulseWallet.Domain.Wallets;
+﻿using Microsoft.EntityFrameworkCore;
+using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Infrastructure.Persistence.Repositories;
 
@@ -11,18 +12,18 @@ public class WalletRepository : IWalletRepository
         _dbContext = dbContext;
     }
 
-    public Task<bool> UsernameExistsAsync(string username, CancellationToken cancellationToken = default)
+    public async Task<bool> UsernameExistsAsync(string username, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return await _dbContext.Wallets.AnyAsync(x => x.Username == username, cancellationToken);
     }
 
-    public Task<Wallet?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Wallet?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return await _dbContext.Wallets.FindAsync([id], cancellationToken);
     }
 
     public void Add(Wallet wallet)
     {
-        throw new NotImplementedException();
+        _dbContext.Wallets.Add(wallet);
     }
 }

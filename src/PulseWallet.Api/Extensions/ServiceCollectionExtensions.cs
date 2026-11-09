@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using PulseWallet.Api.ErrorHandling;
 using Serilog;
 
 namespace PulseWallet.Api.Extensions;
@@ -35,6 +36,10 @@ public static class ServiceCollectionExtensions
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 
         services.AddOpenApi();
+
+        // Errors: every exception becomes a ProblemDetails response; GlobalExceptionHandler picks the status code.
+        services.AddProblemDetails();
+        services.AddExceptionHandler<GlobalExceptionHandler>();
 
         return services;
     }

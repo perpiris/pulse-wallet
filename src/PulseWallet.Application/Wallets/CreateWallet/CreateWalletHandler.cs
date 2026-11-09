@@ -23,7 +23,20 @@ public class CreateWalletHandler
         _logger = logger;
     }
 
-    public async Task HandleAsync(CreateWalletCommand command, CancellationToken cancellationToken)
+    public async Task<WalletDetails> HandleAsync(CreateWalletCommand command, CancellationToken cancellationToken)
     {
+        Wallet wallet = Wallet.Create(command.Username, command.Currency, _timeProvider.GetUtcNow());
+
+        if (await _walletRepository.UsernameExistsAsync(wallet.Username, cancellationToken))
+        {
+            throw new UsernameAlreadyTakenException(wallet.Username);
+        }
+
+        _walletRepository.Add(wallet);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Wallet {WalletId} created for {Username}", wallet.Id, wallet.Username);
+
+        return WalletDetails.From(wallet);
     }
 }
