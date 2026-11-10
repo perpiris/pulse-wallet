@@ -71,8 +71,11 @@ Secondary for this project, possible later:
 - [ ] Apply migrations automatically at startup (Development only)
 
 **Transactions**
+- [x] `Money` value object (amount + currency, no negatives, at most 2 decimals)
+- [x] `LedgerEntry` model and migration (`AddLedgerEntries`)
+- [x] Wallet details include the 10 latest ledger entries
 - [ ] Top up and withdraw
-- [ ] Transaction history (ledger)
+- [ ] Full transaction history (paged)
 - [ ] Transfers between wallets
 - [ ] Exchange rates client
 - [ ] Transfers between wallets in different currencies
@@ -109,8 +112,8 @@ Secondary for this project, possible later:
 src/
   PulseWallet.Api              HTTP layer: controllers, requests/responses, error handling, composition root
   PulseWallet.Application      Use cases: one handler per operation, commands, results
-  PulseWallet.Domain           Business model and rules: entities, domain exceptions, repository interfaces
-  PulseWallet.Infrastructure   Technical details: EF Core, SQL Server, repository implementations
+  PulseWallet.Domain           Business model and rules: entities, value objects, domain exceptions, repository interfaces
+  PulseWallet.Infrastructure   Technical details: EF Core, SQL Server, repository and query implementations
 ```
 
 Dependencies point inward:
@@ -131,7 +134,9 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **Controllers**, with plural lowercase routes (`api/wallets`)
 - **One handler per use case**, no mediator library
 - **Request → Command in, Result → Response out:** the HTTP contract is kept separate from the use cases
-- **Repository per aggregate + unit of work** for writes; reads can query the database directly (CQRS-lite)
+- **Repository per aggregate + unit of work** for writes; reads go through query services (`IWalletQueries`) that project straight into read models (CQRS-lite)
+- **Ledger:** every balance change is an append-only `LedgerEntry` with a positive amount; its type gives the direction. A transfer will be two entries, one per wallet. Entries are never deleted
+- **`Money` value object** for amounts that travel with their currency; amounts someone enters are rejected, never rounded
 - **Exceptions for broken business rules**, mapped to ProblemDetails (RFC 9457) in one place
 - **`TimeProvider`** for the current time, so time-dependent logic is testable
 - **Enums travel as text** in JSON (`"EUR"`, never `0`)
