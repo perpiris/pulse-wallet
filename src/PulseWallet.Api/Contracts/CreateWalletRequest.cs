@@ -8,5 +8,8 @@ public class CreateWalletRequest
     public required string Username { get; init; }
     public required Currency Currency { get; init; }
 
-    public CreateWalletCommand ToCommand() => new(Username, Currency);
+    public CreateWalletCommand ToCommand()
+    {
+        return new CreateWalletCommand(Username, Currency);
+    }
 }

@@ -3,7 +3,7 @@ using PulseWallet.Domain.Shared;
 
 namespace PulseWallet.Domain.Wallets;
 
-public class Wallet
+public sealed class Wallet
 {
     public const int UsernameMinLength = 3;
     public const int UsernameMaxLength = 20;

@@ -9,9 +9,8 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
     public void Configure(EntityTypeBuilder<Wallet> builder)
     {
         builder.ToTable("Wallets");
+        
         builder.HasKey(w => w.Id);
-
-        // The domain creates the ID (Guid v7 in Wallet.Create), so the database must not generate one.
         builder.Property(w => w.Id)
             .ValueGeneratedNever();
 

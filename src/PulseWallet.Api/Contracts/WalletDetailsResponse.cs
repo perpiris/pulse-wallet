@@ -8,8 +8,17 @@ public record WalletDetailsResponse(
     string Username,
     Currency Currency,
     decimal Balance,
-    DateTimeOffset CreatedAt)
+    DateTimeOffset CreatedAt,
+    IReadOnlyList<LedgerEntryResponse> RecentEntries)
 {
-    public static WalletDetailsResponse From(WalletDetails details) =>
-        new(details.Id, details.Username, details.Currency, details.Balance, details.CreatedAt);
+    public static WalletDetailsResponse From(WalletDetails details)
+    {
+        return new WalletDetailsResponse(
+            details.Id,
+            details.Username,
+            details.Currency,
+            details.Balance,
+            details.CreatedAt,
+            details.RecentEntries.Select(LedgerEntryResponse.From).ToList());
+    }
 }
