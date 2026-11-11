@@ -88,7 +88,7 @@ Secondary for this project, possible later:
 
 **Advanced**
 - [x] Optimistic concurrency (row version on wallets, 409 on conflict) + read committed snapshot isolation
-- [ ] Idempotency keys
+- [x] Idempotency keys (`Idempotency-Key` header on top-up and withdraw: a retry replays, a reused key is a 422)
 - [ ] Resilience for the exchange rate client (timeouts, retries, circuit breaker)
 - [ ] Exchange rate caching
 - [ ] Domain events + transactional outbox
@@ -139,6 +139,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **`Money` value object** for amounts that travel with their currency; amounts someone enters are rejected, never rounded
 - **Top-up and withdraw are separate operations** (`Wallet.TopUp`, `Wallet.Withdraw`): the wallet changes its balance and returns the ledger entry, and both are saved in one transaction
 - **Optimistic concurrency:** a `rowversion` on `Wallets` (an EF shadow property, so the domain stays clean). A conflicting save returns 409 and the client retries
+- **Idempotency:** money-moving requests require an `Idempotency-Key` header. The key is stored on the ledger entry with a unique index per wallet, in the same transaction as the money change. Same key and same request → the result is replayed and no money moves; same key, different request → 422. A unique-index race (two requests with the same key, or the same username, at the same moment) returns 409, and the retry gets the replay
 - **Read committed snapshot isolation (RCSI)** on the database: reads use the last committed row version instead of waiting for locks, so a read can't deadlock with a concurrent update
 - **Exceptions for broken business rules**, mapped to ProblemDetails (RFC 9457) in one place
 - **`TimeProvider`** for the current time, so time-dependent logic is testable
@@ -169,6 +170,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 4. Open:
    - Swagger UI: http://localhost:5147/swagger
    - Health check: http://localhost:5147/health
+   - Or call the endpoints from `src/PulseWallet.Api/PulseWallet.Api.http` (Rider / Visual Studio HTTP client). It generates a new `Idempotency-Key` on every call
 
 Useful commands:
 
