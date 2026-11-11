@@ -12,12 +12,12 @@ public class WalletRepository : IWalletRepository
         _dbContext = dbContext;
     }
 
-    public async Task<bool> UsernameExistsAsync(string username, CancellationToken cancellationToken = default)
+    public async Task<bool> UsernameExistsAsync(string username, CancellationToken cancellationToken)
     {
         return await _dbContext.Wallets.AnyAsync(x => x.Username == username, cancellationToken);
     }
 
-    public async Task<Wallet?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Wallet?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _dbContext.Wallets.FindAsync([id], cancellationToken);
     }

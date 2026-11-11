@@ -2,9 +2,6 @@ namespace PulseWallet.Api.Extensions;
 
 public static class WebApplicationExtensions
 {
-    /// <summary>
-    /// The OpenAPI document and Swagger UI, in Development only.
-    /// </summary>
     public static WebApplication UseApiDocumentation(this WebApplication app)
     {
         if (!app.Environment.IsDevelopment())

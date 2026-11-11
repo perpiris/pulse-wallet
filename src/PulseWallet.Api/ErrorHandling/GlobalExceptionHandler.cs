@@ -9,10 +9,6 @@ using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Api.ErrorHandling;
 
-/// <summary>
-/// Turns every exception that reaches the top of the pipeline into a ProblemDetails response (RFC 9457).
-/// Plugged into the built-in exception handler middleware (UseExceptionHandler), so controllers never need try/catch.
-/// </summary>
 public class GlobalExceptionHandler : IExceptionHandler
 {
     // SQL Server error numbers for a duplicate key in a unique index / unique constraint.

@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using PulseWallet.Api.Contracts;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
+using PulseWallet.Application.Ledger;
 using PulseWallet.Application.Wallets.GetWalletById;
+using PulseWallet.Application.Wallets.GetWalletLedgerEntries;
 using PulseWallet.Application.Wallets.TopUpWallet;
 using PulseWallet.Application.Wallets.WithdrawFromWallet;
 
@@ -44,6 +46,20 @@ public class WalletsController : ControllerBase
     {
         WalletDetails wallet = await handler.HandleAsync(id, cancellationToken);
         return Ok(WalletDetailsResponse.From(wallet));
+    }
+
+    [HttpGet("{id:guid}/ledger-entries")]
+    [ProducesResponseType<LedgerEntriesPageResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    public async Task<IActionResult> GetWalletLedgerEntries(
+        Guid id,
+        [FromQuery] GetWalletLedgerEntriesRequest request,
+        [FromServices] GetWalletLedgerEntriesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        LedgerEntriesPage page = await handler.HandleAsync(request.ToQuery(id), cancellationToken);
+        return Ok(LedgerEntriesPageResponse.From(page));
     }
 
     [HttpPost("{id:guid}/top-ups")]

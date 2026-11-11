@@ -3,6 +3,11 @@ root = true
 # All files
 [*]
 indent_style = space
+insert_final_newline = false
+
+# EF Core migrations are generated code: formatters, analyzers and style rules leave them alone
+[**/Migrations/*.cs]
+generated_code = true
 
 # Xml files
 [*.xml]
@@ -28,8 +33,6 @@ indent_size = 2
 indent_size = 4
 tab_width = 4
 
-# New line preferences
-insert_final_newline = false
 
 #### .NET Coding Conventions ####
 [*.{cs,vb}]

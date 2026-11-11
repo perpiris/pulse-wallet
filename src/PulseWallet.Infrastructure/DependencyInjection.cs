@@ -13,9 +13,6 @@ namespace PulseWallet.Infrastructure;
 
 public static class DependencyInjection
 {
-    /// <summary>
-    /// Registers the infrastructure layer: database access (and later repositories, external clients...).
-    /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Comes from the ConnectionStrings__PulseWallet environment variable in Docker (compose.yaml),

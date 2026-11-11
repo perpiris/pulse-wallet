@@ -6,9 +6,6 @@ namespace PulseWallet.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    /// <summary>
-    /// Serilog, configured from the "Serilog" section of appsettings (levels, sinks, properties).
-    /// </summary>
     public static IServiceCollection AddSerilogLogging(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSerilog((serviceProvider, config) => config
@@ -19,9 +16,6 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Controllers, JSON settings and the OpenAPI document.
-    /// </summary>
     public static IServiceCollection AddApi(this IServiceCollection services)
     {
         // Enums travel as text ("EUR"), never as numbers. ASP.NET Core keeps two separate JSON settings,
@@ -44,9 +38,6 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Health checks for /health, including whether SQL Server can be reached.
-    /// </summary>
     public static IServiceCollection AddDatabaseHealthChecks(this IServiceCollection services, IConfiguration configuration)
     {
         // Comes from the ConnectionStrings__PulseWallet environment variable in Docker (compose.yaml),

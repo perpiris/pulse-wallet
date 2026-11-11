@@ -4,11 +4,7 @@
 
 namespace PulseWallet.Infrastructure.Persistence.Migrations
 {
-    /// <summary>
-    /// Read Committed Snapshot Isolation (RCSI): reads use the last committed version of a row instead of
-    /// waiting for locks held by writers, so a read can't deadlock with a concurrent update.
-    /// Writes still conflict as before (the wallet's RowVersion check still returns 409).
-    /// </summary>
+    /// <inheritdoc />
     public partial class EnableReadCommittedSnapshot : Migration
     {
         /// <inheritdoc />

@@ -17,6 +17,9 @@ Content-Type: application/json
 ### Get a wallet
 GET {{baseUrl}}/api/wallets/{{walletId}}
 
+### Wallet history (all optional: from/to are UTC days, both included; direction=Incoming|Outgoing; before=nextCursor)
+GET {{baseUrl}}/api/wallets/{{walletId}}/ledger-entries?from=2026-11-01&to=2026-11-15&direction=Outgoing
+
 ### Top up
 POST {{baseUrl}}/api/wallets/{{walletId}}/top-ups
 Content-Type: application/json
