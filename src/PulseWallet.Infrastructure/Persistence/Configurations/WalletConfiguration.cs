@@ -36,5 +36,13 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
 
         builder.Property(w => w.CreatedAt)
             .IsRequired();
+
+        // Optimistic concurrency: SQL Server changes a rowversion on every update, and EF adds
+        // "WHERE RowVersion = <value when loaded>" to the UPDATE. If another request saved the wallet in between,
+        // no row matches and EF throws DbUpdateConcurrencyException, so two concurrent balance changes
+        // can't both apply to the same starting balance (no overdraft, no lost top-up).
+        // A shadow property: it exists only in the EF model, so the domain class stays free of persistence details.
+        builder.Property<byte[]>("RowVersion")
+            .IsRowVersion();
     }
 }

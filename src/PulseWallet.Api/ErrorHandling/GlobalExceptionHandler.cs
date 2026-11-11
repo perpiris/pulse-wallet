@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
 using PulseWallet.Domain.Common;
@@ -30,6 +31,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             DomainException => (StatusCodes.Status400BadRequest, "Invalid request"),
             WalletNotFoundException => (StatusCodes.Status404NotFound, "Wallet not found"),
             UsernameAlreadyTakenException => (StatusCodes.Status409Conflict, "Username already taken"),
+            DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Concurrent update"),
             _ => (StatusCodes.Status500InternalServerError, "Server error")
         };
 
@@ -51,10 +53,24 @@ public class GlobalExceptionHandler : IExceptionHandler
             {
                 Status = statusCode,
                 Title = title,
-                Detail = statusCode == StatusCodes.Status500InternalServerError
-                    ? "An unexpected error occurred."
-                    : exception.Message
+                Detail = GetDetail(exception, statusCode)
             }
         });
+    }
+
+    private static string GetDetail(Exception exception, int statusCode)
+    {
+        if (exception is DbUpdateConcurrencyException)
+        {
+            // EF's own message talks about rows and columns; the client needs to know it can simply retry.
+            return "The wallet was changed by another request at the same time. Reload it and try again.";
+        }
+
+        if (statusCode == StatusCodes.Status500InternalServerError)
+        {
+            return "An unexpected error occurred.";
+        }
+
+        return exception.Message;
     }
 }
