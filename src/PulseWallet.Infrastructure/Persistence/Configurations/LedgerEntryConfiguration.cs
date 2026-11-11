@@ -45,5 +45,12 @@ internal sealed class LedgerEntryConfiguration : IEntityTypeConfiguration<Ledger
         // A wallet's history: filter by WalletId, read in CreatedAt order. Also serves WalletId-only queries,
         // so EF doesn't add a separate index for the foreign key.
         builder.HasIndex(e => new { e.WalletId, e.CreatedAt });
+
+        // The guarantee behind idempotency: a key can create at most one entry per wallet, even if two
+        // requests with the same key both pass the "seen it before?" check. Filtered on NOT NULL, so the
+        // entries without a key (transfers) don't collide with each other.
+        builder.HasIndex(e => new { e.WalletId, e.IdempotencyKey })
+            .IsUnique()
+            .HasFilter("[IdempotencyKey] IS NOT NULL");
     }
 }

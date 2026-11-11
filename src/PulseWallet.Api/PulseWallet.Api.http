@@ -1,0 +1,38 @@
+@baseUrl = http://localhost:5147
+
+### Health
+GET {{baseUrl}}/health
+
+### Create a wallet (stores the new wallet's id in {{walletId}} for the requests below)
+POST {{baseUrl}}/api/wallets
+Content-Type: application/json
+
+{
+  "username": "user_{{$random.integer(10000, 99999)}}",
+  "currency": "EUR"
+}
+
+> {% client.global.set("walletId", response.body.id); %}
+
+### Get a wallet
+GET {{baseUrl}}/api/wallets/{{walletId}}
+
+### Top up
+POST {{baseUrl}}/api/wallets/{{walletId}}/top-ups
+Content-Type: application/json
+Idempotency-Key: {{$random.uuid}}
+
+{
+  "amount": 100,
+  "currency": "EUR"
+}
+
+### Withdraw
+POST {{baseUrl}}/api/wallets/{{walletId}}/withdrawals
+Content-Type: application/json
+Idempotency-Key: {{$random.uuid}}
+
+{
+  "amount": 30,
+  "currency": "EUR"
+}

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using PulseWallet.Application.Abstractions;
+using PulseWallet.Application.Ledger;
 using PulseWallet.Domain.Ledger;
 using PulseWallet.Domain.Shared;
 using PulseWallet.Domain.Wallets;
@@ -33,22 +34,44 @@ public sealed class TopUpWalletHandler
 
     public async Task<WalletDetails> HandleAsync(TopUpWalletCommand command, CancellationToken cancellationToken)
     {
+        Money amount = Money.Create(command.Amount, command.Currency);
+
+        // A retry of a request that already succeeded: don't move money again, return the current state.
+        LedgerEntry? existing = await _ledgerEntryRepository.GetByIdempotencyKeyAsync(
+            command.WalletId, command.IdempotencyKey, cancellationToken);
+        if (existing is not null)
+        {
+            if (!existing.Matches(LedgerEntryType.TopUp, amount))
+            {
+                throw new IdempotencyKeyReusedException(command.IdempotencyKey);
+            }
+
+            _logger.LogInformation("Top-up with idempotency key {IdempotencyKey} already applied (entry {LedgerEntryId}), replaying",
+                command.IdempotencyKey, existing.Id);
+            return await GetDetailsAsync(command.WalletId, cancellationToken);
+        }
+
         Wallet? wallet = await _walletRepository.GetByIdAsync(command.WalletId, cancellationToken);
         if (wallet is null)
         {
             throw new WalletNotFoundException(command.WalletId);
         }
 
-        LedgerEntry entry = wallet.TopUp(Money.Create(command.Amount, command.Currency), _timeProvider.GetUtcNow());
+        LedgerEntry entry = wallet.TopUp(amount, command.IdempotencyKey, _timeProvider.GetUtcNow());
         _ledgerEntryRepository.Add(entry);
 
-        // One SaveChanges: the new balance and the ledger entry are saved in the same transaction.
+        // One SaveChanges: the new balance and the ledger entry (with its key) are saved in the same transaction.
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Wallet {WalletId} topped up with {Amount} {Currency} (entry {LedgerEntryId})",
             wallet.Id, command.Amount, command.Currency, entry.Id);
 
-        return await _walletQueries.GetDetailsAsync(wallet.Id, WalletDetails.RecentEntriesCount, cancellationToken)
-               ?? throw new InvalidOperationException($"Wallet '{wallet.Id}' was not found right after it was saved.");
+        return await GetDetailsAsync(wallet.Id, cancellationToken);
+    }
+
+    private async Task<WalletDetails> GetDetailsAsync(Guid walletId, CancellationToken cancellationToken)
+    {
+        return await _walletQueries.GetDetailsAsync(walletId, WalletDetails.RecentEntriesCount, cancellationToken)
+               ?? throw new WalletNotFoundException(walletId);
     }
 }

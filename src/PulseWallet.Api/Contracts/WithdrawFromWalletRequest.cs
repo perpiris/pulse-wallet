@@ -8,8 +8,8 @@ public record WithdrawFromWalletRequest
     public required decimal Amount { get; init; }
     public required Currency Currency { get; init; }
 
-    public WithdrawFromWalletCommand ToCommand(Guid walletId)
+    public WithdrawFromWalletCommand ToCommand(Guid walletId, Guid idempotencyKey)
     {
-        return new WithdrawFromWalletCommand(walletId, Amount, Currency);
+        return new WithdrawFromWalletCommand(walletId, Amount, Currency, idempotencyKey);
     }
 }

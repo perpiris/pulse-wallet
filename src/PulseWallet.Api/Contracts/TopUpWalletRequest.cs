@@ -8,8 +8,8 @@ public record TopUpWalletRequest
     public required decimal Amount { get; init; }
     public required Currency Currency { get; init; }
 
-    public TopUpWalletCommand ToCommand(Guid walletId)
+    public TopUpWalletCommand ToCommand(Guid walletId, Guid idempotencyKey)
     {
-        return new TopUpWalletCommand(walletId, Amount, Currency);
+        return new TopUpWalletCommand(walletId, Amount, Currency, idempotencyKey);
     }
 }

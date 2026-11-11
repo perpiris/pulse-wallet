@@ -31,6 +31,9 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("IdempotencyKey")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -58,6 +61,10 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("WalletId", "CreatedAt");
+
+                    b.HasIndex("WalletId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("[IdempotencyKey] IS NOT NULL");
 
                     b.ToTable("LedgerEntries", (string)null);
                 });

@@ -48,16 +48,16 @@ public sealed class Wallet
         };
     }
 
-    public LedgerEntry TopUp(Money amount, DateTimeOffset now)
+    public LedgerEntry TopUp(Money amount, Guid idempotencyKey, DateTimeOffset now)
     {
         EnsureSameCurrency(amount);
 
-        LedgerEntry entry = LedgerEntry.Create(Id, LedgerEntryType.TopUp, amount, now);
+        LedgerEntry entry = LedgerEntry.Create(Id, LedgerEntryType.TopUp, amount, idempotencyKey, now);
         Balance += amount.Amount;
         return entry;
     }
 
-    public LedgerEntry Withdraw(Money amount, DateTimeOffset now)
+    public LedgerEntry Withdraw(Money amount, Guid idempotencyKey, DateTimeOffset now)
     {
         EnsureSameCurrency(amount);
 
@@ -66,7 +66,7 @@ public sealed class Wallet
             throw new InsufficientFundsException(Id, amount.Amount, Balance);
         }
 
-        LedgerEntry entry = LedgerEntry.Create(Id, LedgerEntryType.Withdrawal, amount, now);
+        LedgerEntry entry = LedgerEntry.Create(Id, LedgerEntryType.Withdrawal, amount, idempotencyKey, now);
         Balance -= amount.Amount;
         return entry;
     }

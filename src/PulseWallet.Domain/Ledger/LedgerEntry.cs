@@ -11,9 +11,24 @@ public sealed class LedgerEntry
     public Money Amount { get; private set; } = null!;
     public DateTimeOffset CreatedAt { get; private set; }
 
+    // The client's Idempotency-Key for the request that created this entry: a retry with the same key
+    // finds this entry instead of moving money again. Null for entries created by a transfer
+    // (the key of a transfer belongs on the Transfer).
+    public Guid? IdempotencyKey { get; private set; }
+
     private LedgerEntry() { }
 
-    public static LedgerEntry Create(Guid walletId, LedgerEntryType type, Money amount, DateTimeOffset now)
+    public bool Matches(LedgerEntryType type, Money amount)
+    {
+        return Type == type && Amount == amount;
+    }
+
+    public static LedgerEntry Create(
+        Guid walletId,
+        LedgerEntryType type,
+        Money amount,
+        Guid? idempotencyKey,
+        DateTimeOffset now)
     {
         if (!Enum.IsDefined(type))
         {
@@ -31,6 +46,7 @@ public sealed class LedgerEntry
             WalletId = walletId,
             Type = type,
             Amount = amount,
+            IdempotencyKey = idempotencyKey,
             CreatedAt = now
         };
     }

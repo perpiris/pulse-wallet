@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using PulseWallet.Api.Contracts;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
@@ -13,6 +14,11 @@ namespace PulseWallet.Api.Controllers;
 [Produces("application/json")]
 public class WalletsController : ControllerBase
 {
+    // Required on money-moving requests: the client generates one per operation and reuses it on retries,
+    // so a retry never moves money twice. [BindRequired] makes a missing header a 400: without it,
+    // a missing header would silently bind to Guid.Empty. A malformed one is a 400 either way.
+    private const string IdempotencyKeyHeader = "Idempotency-Key";
+
     // The error responses are produced by GlobalExceptionHandler, not here;
     // the attributes only tell the OpenAPI document (and Swagger) that they can happen.
     [HttpPost]
@@ -45,13 +51,15 @@ public class WalletsController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<IActionResult> TopUpWallet(
         Guid id,
         TopUpWalletRequest request,
+        [FromHeader(Name = IdempotencyKeyHeader), BindRequired] Guid idempotencyKey,
         [FromServices] TopUpWalletHandler handler,
         CancellationToken cancellationToken)
     {
-        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(id), cancellationToken);
+        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(id, idempotencyKey), cancellationToken);
         return Ok(WalletDetailsResponse.From(wallet));
     }
 
@@ -64,10 +72,11 @@ public class WalletsController : ControllerBase
     public async Task<IActionResult> WithdrawFromWallet(
         Guid id,
         WithdrawFromWalletRequest request,
+        [FromHeader(Name = IdempotencyKeyHeader), BindRequired] Guid idempotencyKey,
         [FromServices] WithdrawFromWalletHandler handler,
         CancellationToken cancellationToken)
     {
-        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(id), cancellationToken);
+        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(id, idempotencyKey), cancellationToken);
         return Ok(WalletDetailsResponse.From(wallet));
     }
 }
