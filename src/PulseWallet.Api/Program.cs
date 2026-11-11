@@ -3,7 +3,7 @@ using PulseWallet.Application;
 using PulseWallet.Infrastructure;
 using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddSerilogLogging(builder.Configuration)
@@ -12,7 +12,7 @@ builder.Services
     .AddApi()
     .AddDatabaseHealthChecks(builder.Configuration);
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // The middleware pipeline stays here, in order: the order matters, so it should be visible at a glance.
 app.UseSerilogRequestLogging(); // outermost, so it logs the final status code (after errors are turned into 4xx/5xx)

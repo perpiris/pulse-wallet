@@ -51,7 +51,7 @@ public static class ServiceCollectionExtensions
     {
         // Comes from the ConnectionStrings__PulseWallet environment variable in Docker (compose.yaml),
         // or from user secrets when running locally. Never from appsettings, so no password is committed.
-        var connectionString = configuration.GetConnectionString("PulseWallet")
+        string connectionString = configuration.GetConnectionString("PulseWallet")
             ?? throw new InvalidOperationException("Connection string 'PulseWallet' is not configured.");
 
         services.AddHealthChecks()

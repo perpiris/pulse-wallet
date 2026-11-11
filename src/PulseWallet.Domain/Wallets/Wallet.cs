@@ -1,4 +1,5 @@
 ﻿using PulseWallet.Domain.Common;
+using PulseWallet.Domain.Ledger;
 using PulseWallet.Domain.Shared;
 
 namespace PulseWallet.Domain.Wallets;
@@ -45,5 +46,36 @@ public sealed class Wallet
             Balance = 0,
             CreatedAt = now
         };
+    }
+
+    public LedgerEntry TopUp(Money amount, DateTimeOffset now)
+    {
+        EnsureSameCurrency(amount);
+
+        LedgerEntry entry = LedgerEntry.Create(Id, LedgerEntryType.TopUp, amount, now);
+        Balance += amount.Amount;
+        return entry;
+    }
+
+    public LedgerEntry Withdraw(Money amount, DateTimeOffset now)
+    {
+        EnsureSameCurrency(amount);
+
+        if (amount.Amount > Balance)
+        {
+            throw new InsufficientFundsException(Id, amount.Amount, Balance);
+        }
+
+        LedgerEntry entry = LedgerEntry.Create(Id, LedgerEntryType.Withdrawal, amount, now);
+        Balance -= amount.Amount;
+        return entry;
+    }
+
+    private void EnsureSameCurrency(Money amount)
+    {
+        if (amount.Currency != Currency)
+        {
+            throw new DomainException($"Wallet currency is {Currency}, but the amount is in {amount.Currency}.");
+        }
     }
 }

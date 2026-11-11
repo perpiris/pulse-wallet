@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using PulseWallet.Application.Wallets.CreateWallet;
 using PulseWallet.Application.Wallets.GetWalletById;
+using PulseWallet.Application.Wallets.TopUpWallet;
+using PulseWallet.Application.Wallets.WithdrawFromWallet;
 
 namespace PulseWallet.Application;
 
@@ -14,6 +16,8 @@ public static class DependencyInjection
     {
         services.AddScoped<CreateWalletHandler>();
         services.AddScoped<GetWalletByIdHandler>();
+        services.AddScoped<TopUpWalletHandler>();
+        services.AddScoped<WithdrawFromWalletHandler>();
 
         services.AddSingleton(TimeProvider.System);
 

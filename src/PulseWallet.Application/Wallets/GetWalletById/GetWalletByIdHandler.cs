@@ -11,7 +11,7 @@ public class GetWalletByIdHandler
 
     public async Task<WalletDetails> HandleAsync(Guid id, CancellationToken cancellationToken)
     {
-        var wallet = await _walletQueries.GetDetailsAsync(id, WalletDetails.RecentEntriesCount, cancellationToken);
+        WalletDetails? wallet = await _walletQueries.GetDetailsAsync(id, WalletDetails.RecentEntriesCount, cancellationToken);
 
         if (wallet is null)
         {

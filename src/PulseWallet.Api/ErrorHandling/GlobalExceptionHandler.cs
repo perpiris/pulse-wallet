@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics;
+using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
-using PulseWallet.Application.Wallets.GetWalletById;
 using PulseWallet.Domain.Common;
+using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Api.ErrorHandling;
 
@@ -22,8 +23,10 @@ public class GlobalExceptionHandler : IExceptionHandler
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        var (statusCode, title) = exception switch
+        // The first matching arm wins: specific DomainException subtypes must come before DomainException.
+        (int statusCode, string title) = exception switch
         {
+            InsufficientFundsException => (StatusCodes.Status422UnprocessableEntity, "Insufficient funds"),
             DomainException => (StatusCodes.Status400BadRequest, "Invalid request"),
             WalletNotFoundException => (StatusCodes.Status404NotFound, "Wallet not found"),
             UsernameAlreadyTakenException => (StatusCodes.Status409Conflict, "Username already taken"),

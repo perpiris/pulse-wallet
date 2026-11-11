@@ -9,7 +9,7 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
     public void Configure(EntityTypeBuilder<Wallet> builder)
     {
         builder.ToTable("Wallets");
-        
+
         builder.HasKey(w => w.Id);
         builder.Property(w => w.Id)
             .ValueGeneratedNever();
