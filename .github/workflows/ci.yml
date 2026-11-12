@@ -1,0 +1,38 @@
+# Runs on every push to master and on every pull request: the code must build and be formatted.
+# Tests get added here as a step once the first test project exists.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# A newer push to the same branch or PR cancels the run that's still going for the older commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore PulseWallet.slnx
+
+      # Release, like the Docker image. TreatWarningsAsErrors and EnforceCodeStyleInBuild
+      # (Directory.Build.props) apply here too, so a warning fails the build.
+      - name: Build
+        run: dotnet build PulseWallet.slnx --no-restore -c Release
+
+      # Fails if any file doesn't match .editorconfig (indentation, spacing, final newline).
+      - name: Check formatting
+        run: dotnet format whitespace PulseWallet.slnx --verify-no-changes

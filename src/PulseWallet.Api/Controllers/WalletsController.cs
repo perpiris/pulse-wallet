@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using PulseWallet.Api.Contracts;
+using PulseWallet.Application.Ledger;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
-using PulseWallet.Application.Ledger;
 using PulseWallet.Application.Wallets.GetWalletById;
 using PulseWallet.Application.Wallets.GetWalletLedgerEntries;
 using PulseWallet.Application.Wallets.TopUpWallet;
