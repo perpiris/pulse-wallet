@@ -39,3 +39,31 @@ Idempotency-Key: {{$random.uuid}}
   "amount": 30,
   "currency": "EUR"
 }
+
+### Create a second wallet to receive transfers (stores its id in {{destinationWalletId}})
+POST {{baseUrl}}/api/wallets
+Content-Type: application/json
+
+{
+  "username": "user_{{$random.integer(10000, 99999)}}",
+  "currency": "EUR"
+}
+
+> {% client.global.set("destinationWalletId", response.body.id); %}
+
+### Transfer (instant, same currency; stores the new transfer's id in {{transferId}})
+POST {{baseUrl}}/api/transfers
+Content-Type: application/json
+Idempotency-Key: {{$random.uuid}}
+
+{
+  "sourceWalletId": "{{walletId}}",
+  "destinationWalletId": "{{destinationWalletId}}",
+  "amount": 20,
+  "currency": "EUR"
+}
+
+> {% client.global.set("transferId", response.body.id); %}
+
+### Get a transfer
+GET {{baseUrl}}/api/transfers/{{transferId}}

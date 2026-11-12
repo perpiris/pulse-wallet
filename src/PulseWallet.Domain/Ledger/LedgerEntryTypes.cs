@@ -2,8 +2,8 @@ namespace PulseWallet.Domain.Ledger;
 
 public static class LedgerEntryTypes
 {
-    private static readonly LedgerEntryType[] Incoming = [LedgerEntryType.TopUp];
-    private static readonly LedgerEntryType[] Outgoing = [LedgerEntryType.Withdrawal];
+    private static readonly LedgerEntryType[] Incoming = [LedgerEntryType.TopUp, LedgerEntryType.TransferIn];
+    private static readonly LedgerEntryType[] Outgoing = [LedgerEntryType.Withdrawal, LedgerEntryType.TransferOut];
 
     public static LedgerEntryType[] For(LedgerEntryDirection direction)
     {

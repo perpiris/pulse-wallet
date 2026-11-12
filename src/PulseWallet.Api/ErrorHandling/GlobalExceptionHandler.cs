@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using PulseWallet.Application.Ledger;
+using PulseWallet.Application.Transfers;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
 using PulseWallet.Domain.Common;
@@ -14,6 +15,10 @@ public class GlobalExceptionHandler : IExceptionHandler
     // SQL Server error numbers for a duplicate key in a unique index / unique constraint.
     private const int UniqueIndexViolation = 2601;
     private const int UniqueConstraintViolation = 2627;
+
+    // Chosen as the deadlock victim: two transactions locked the same rows in opposite order
+    // (for example A→B and B→A transfers at the same moment). Nothing was saved, a retry is safe.
+    private const int DeadlockVictim = 1205;
 
     private readonly IProblemDetailsService _problemDetailsService;
     private readonly ILogger<GlobalExceptionHandler> _logger;
@@ -33,9 +38,10 @@ public class GlobalExceptionHandler : IExceptionHandler
             IdempotencyKeyReusedException => (StatusCodes.Status422UnprocessableEntity, "Idempotency key reused"),
             DomainException => (StatusCodes.Status400BadRequest, "Invalid request"),
             WalletNotFoundException => (StatusCodes.Status404NotFound, "Wallet not found"),
+            TransferNotFoundException => (StatusCodes.Status404NotFound, "Transfer not found"),
             UsernameAlreadyTakenException => (StatusCodes.Status409Conflict, "Username already taken"),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Concurrent update"),
-            DbUpdateException { InnerException: SqlException { Number: UniqueIndexViolation or UniqueConstraintViolation } }
+            DbUpdateException { InnerException: SqlException { Number: UniqueIndexViolation or UniqueConstraintViolation or DeadlockVictim } }
                 => (StatusCodes.Status409Conflict, "Concurrent update"),
             _ => (StatusCodes.Status500InternalServerError, "Server error")
         };

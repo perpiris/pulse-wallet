@@ -60,15 +60,39 @@ public sealed class Wallet
     public LedgerEntry Withdraw(Money amount, Guid idempotencyKey, DateTimeOffset now)
     {
         EnsureSameCurrency(amount);
-
-        if (amount.Amount > Balance)
-        {
-            throw new InsufficientFundsException(Id, amount.Amount, Balance);
-        }
+        EnsureSufficientFunds(amount);
 
         LedgerEntry entry = LedgerEntry.Create(Id, LedgerEntryType.Withdrawal, amount, idempotencyKey, now);
         Balance -= amount.Amount;
         return entry;
+    }
+
+    // Internal: only Transfer.Execute calls these, so a transfer can't be half done from outside the domain.
+    internal LedgerEntry SendTransfer(Guid transferId, Money amount, DateTimeOffset now)
+    {
+        EnsureSameCurrency(amount);
+        EnsureSufficientFunds(amount);
+
+        LedgerEntry entry = LedgerEntry.CreateForTransfer(Id, LedgerEntryType.TransferOut, amount, transferId, now);
+        Balance -= amount.Amount;
+        return entry;
+    }
+
+    internal LedgerEntry ReceiveTransfer(Guid transferId, Money amount, DateTimeOffset now)
+    {
+        EnsureSameCurrency(amount);
+
+        LedgerEntry entry = LedgerEntry.CreateForTransfer(Id, LedgerEntryType.TransferIn, amount, transferId, now);
+        Balance += amount.Amount;
+        return entry;
+    }
+
+    private void EnsureSufficientFunds(Money amount)
+    {
+        if (amount.Amount > Balance)
+        {
+            throw new InsufficientFundsException(Id, amount.Amount, Balance);
+        }
     }
 
     private void EnsureSameCurrency(Money amount)

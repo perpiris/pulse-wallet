@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using PulseWallet.Application.Transfers.CreateTransfer;
+using PulseWallet.Application.Transfers.GetTransferById;
 using PulseWallet.Application.Wallets.CreateWallet;
 using PulseWallet.Application.Wallets.GetWalletById;
 using PulseWallet.Application.Wallets.GetWalletLedgerEntries;
@@ -16,6 +18,8 @@ public static class DependencyInjection
         services.AddScoped<GetWalletLedgerEntriesHandler>();
         services.AddScoped<TopUpWalletHandler>();
         services.AddScoped<WithdrawFromWalletHandler>();
+        services.AddScoped<CreateTransferHandler>();
+        services.AddScoped<GetTransferByIdHandler>();
 
         services.AddSingleton(TimeProvider.System);
 

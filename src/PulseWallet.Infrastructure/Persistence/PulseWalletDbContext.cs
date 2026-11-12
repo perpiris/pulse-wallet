@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PulseWallet.Application.Abstractions;
 using PulseWallet.Domain.Ledger;
+using PulseWallet.Domain.Transfers;
 using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Infrastructure.Persistence;
@@ -13,6 +14,7 @@ public class PulseWalletDbContext : DbContext, IUnitOfWork
 
     public DbSet<Wallet> Wallets => Set<Wallet>();
     public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
+    public DbSet<Transfer> Transfers => Set<Transfer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

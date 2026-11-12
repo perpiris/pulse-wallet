@@ -16,11 +16,6 @@ namespace PulseWallet.Api.Controllers;
 [Produces("application/json")]
 public class WalletsController : ControllerBase
 {
-    // Required on money-moving requests: the client generates one per operation and reuses it on retries,
-    // so a retry never moves money twice. [BindRequired] makes a missing header a 400: without it,
-    // a missing header would silently bind to Guid.Empty. A malformed one is a 400 either way.
-    private const string IdempotencyKeyHeader = "Idempotency-Key";
-
     // The error responses are produced by GlobalExceptionHandler, not here;
     // the attributes only tell the OpenAPI document (and Swagger) that they can happen.
     [HttpPost]
@@ -71,7 +66,7 @@ public class WalletsController : ControllerBase
     public async Task<IActionResult> TopUpWallet(
         Guid id,
         TopUpWalletRequest request,
-        [FromHeader(Name = IdempotencyKeyHeader), BindRequired] Guid idempotencyKey,
+        [FromHeader(Name = ApiHeaders.IdempotencyKey), BindRequired] Guid idempotencyKey,
         [FromServices] TopUpWalletHandler handler,
         CancellationToken cancellationToken)
     {
@@ -88,7 +83,7 @@ public class WalletsController : ControllerBase
     public async Task<IActionResult> WithdrawFromWallet(
         Guid id,
         WithdrawFromWalletRequest request,
-        [FromHeader(Name = IdempotencyKeyHeader), BindRequired] Guid idempotencyKey,
+        [FromHeader(Name = ApiHeaders.IdempotencyKey), BindRequired] Guid idempotencyKey,
         [FromServices] WithdrawFromWalletHandler handler,
         CancellationToken cancellationToken)
     {

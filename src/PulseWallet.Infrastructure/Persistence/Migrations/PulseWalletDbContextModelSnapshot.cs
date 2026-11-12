@@ -34,6 +34,9 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("IdempotencyKey")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("TransferId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -60,6 +63,8 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TransferId");
+
                     b.HasIndex("WalletId", "CreatedAt");
 
                     b.HasIndex("WalletId", "IdempotencyKey")
@@ -67,6 +72,49 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                         .HasFilter("[IdempotencyKey] IS NOT NULL");
 
                     b.ToTable("LedgerEntries", (string)null);
+                });
+
+            modelBuilder.Entity("PulseWallet.Domain.Transfers.Transfer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("DestinationWalletId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SourceWalletId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "PulseWallet.Domain.Transfers.Transfer.Amount#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("decimal(18,2)")
+                                .HasColumnName("Amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("nvarchar(3)")
+                                .HasColumnName("Currency");
+                        });
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DestinationWalletId");
+
+                    b.HasIndex("SourceWalletId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("Transfers", (string)null);
                 });
 
             modelBuilder.Entity("PulseWallet.Domain.Wallets.Wallet", b =>
@@ -106,9 +154,29 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PulseWallet.Domain.Ledger.LedgerEntry", b =>
                 {
+                    b.HasOne("PulseWallet.Domain.Transfers.Transfer", null)
+                        .WithMany()
+                        .HasForeignKey("TransferId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PulseWallet.Domain.Wallets.Wallet", null)
                         .WithMany()
                         .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PulseWallet.Domain.Transfers.Transfer", b =>
+                {
+                    b.HasOne("PulseWallet.Domain.Wallets.Wallet", null)
+                        .WithMany()
+                        .HasForeignKey("DestinationWalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PulseWallet.Domain.Wallets.Wallet", null)
+                        .WithMany()
+                        .HasForeignKey("SourceWalletId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

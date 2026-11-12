@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PulseWallet.Domain.Ledger;
+using PulseWallet.Domain.Transfers;
 using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Infrastructure.Persistence.Configurations;
@@ -18,6 +19,12 @@ internal sealed class LedgerEntryConfiguration : IEntityTypeConfiguration<Ledger
         builder.HasOne<Wallet>()
             .WithMany()
             .HasForeignKey(e => e.WalletId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Also gives EF the insert order: the Transfer row first, then its two entries.
+        builder.HasOne<Transfer>()
+            .WithMany()
+            .HasForeignKey(e => e.TransferId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Stored as text ("TopUp"), like Wallet.Currency: readable, and safe if the enum is reordered.

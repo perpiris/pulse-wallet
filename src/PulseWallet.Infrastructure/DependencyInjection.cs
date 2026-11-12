@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PulseWallet.Application.Abstractions;
+using PulseWallet.Application.Transfers;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Domain.Ledger;
+using PulseWallet.Domain.Transfers;
 using PulseWallet.Domain.Wallets;
 using PulseWallet.Infrastructure.Persistence;
 using PulseWallet.Infrastructure.Persistence.Queries;
@@ -25,7 +27,9 @@ public static class DependencyInjection
 
         services.AddScoped<IWalletRepository, WalletRepository>();
         services.AddScoped<ILedgerEntryRepository, LedgerEntryRepository>();
+        services.AddScoped<ITransferRepository, TransferRepository>();
         services.AddScoped<IWalletQueries, WalletQueries>();
+        services.AddScoped<ITransferQueries, TransferQueries>();
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PulseWalletDbContext>());
 
         return services;

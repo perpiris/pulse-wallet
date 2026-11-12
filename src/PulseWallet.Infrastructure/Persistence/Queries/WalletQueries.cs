@@ -35,7 +35,7 @@ internal sealed class WalletQueries : IWalletQueries
                     .OrderByDescending(e => e.CreatedAt)
                     .ThenByDescending(e => e.Id)
                     .Take(recentEntries)
-                    .Select(e => new LedgerEntryDetails(e.Id, e.Type, e.Amount.Amount, e.Amount.Currency, e.CreatedAt))
+                    .Select(e => new LedgerEntryDetails(e.Id, e.Type, e.Amount.Amount, e.Amount.Currency, e.CreatedAt, e.TransferId))
                     .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -78,7 +78,7 @@ internal sealed class WalletQueries : IWalletQueries
             // Keyset: everything after the cursor in the (CreatedAt DESC, Id DESC) order.
             DateTimeOffset createdAt = filter.Before.CreatedAt;
             Guid id = filter.Before.Id;
-            entries = entries.Where(e => e.CreatedAt < createdAt || (e.CreatedAt == createdAt && e.Id.CompareTo(id) < 0));
+            entries = entries.Where(e => e.CreatedAt < createdAt || (e.CreatedAt == createdAt && e.Id < id));
         }
 
         // One more than a page: if it comes back, there is a next page (no COUNT query needed).
@@ -86,7 +86,7 @@ internal sealed class WalletQueries : IWalletQueries
             .OrderByDescending(e => e.CreatedAt)
             .ThenByDescending(e => e.Id)
             .Take(filter.PageSize + 1)
-            .Select(e => new LedgerEntryDetails(e.Id, e.Type, e.Amount.Amount, e.Amount.Currency, e.CreatedAt))
+            .Select(e => new LedgerEntryDetails(e.Id, e.Type, e.Amount.Amount, e.Amount.Currency, e.CreatedAt, e.TransferId))
             .ToListAsync(cancellationToken);
 
         if (items.Count <= filter.PageSize)

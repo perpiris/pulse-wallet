@@ -4,10 +4,17 @@ using PulseWallet.Domain.Shared;
 
 namespace PulseWallet.Api.Contracts;
 
-public record LedgerEntryResponse(Guid Id, LedgerEntryType Type, decimal Amount, Currency Currency, DateTimeOffset CreatedAt)
+public record LedgerEntryResponse(
+    Guid Id,
+    LedgerEntryType Type,
+    decimal Amount,
+    Currency Currency,
+    DateTimeOffset CreatedAt,
+    Guid? TransferId)
 {
     public static LedgerEntryResponse From(LedgerEntryDetails details)
     {
-        return new LedgerEntryResponse(details.Id, details.Type, details.Amount, details.Currency, details.CreatedAt);
+        return new LedgerEntryResponse(
+            details.Id, details.Type, details.Amount, details.Currency, details.CreatedAt, details.TransferId);
     }
 }

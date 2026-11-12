@@ -16,6 +16,9 @@ public sealed class LedgerEntry
     // (the key of a transfer belongs on the Transfer).
     public Guid? IdempotencyKey { get; private set; }
 
+    // Set on the two entries of a transfer (TransferOut on the source, TransferIn on the destination).
+    public Guid? TransferId { get; private set; }
+
     private LedgerEntry() { }
 
     public bool Matches(LedgerEntryType type, Money amount)
@@ -28,6 +31,37 @@ public sealed class LedgerEntry
         LedgerEntryType type,
         Money amount,
         Guid? idempotencyKey,
+        DateTimeOffset now)
+    {
+        if (type is LedgerEntryType.TransferIn or LedgerEntryType.TransferOut)
+        {
+            throw new DomainException($"Ledger entry type '{type}' needs a transfer.");
+        }
+
+        return Create(walletId, type, amount, idempotencyKey, transferId: null, now);
+    }
+
+    public static LedgerEntry CreateForTransfer(
+        Guid walletId,
+        LedgerEntryType type,
+        Money amount,
+        Guid transferId,
+        DateTimeOffset now)
+    {
+        if (type is not (LedgerEntryType.TransferIn or LedgerEntryType.TransferOut))
+        {
+            throw new DomainException($"Ledger entry type '{type}' is not a transfer type.");
+        }
+
+        return Create(walletId, type, amount, idempotencyKey: null, transferId, now);
+    }
+
+    private static LedgerEntry Create(
+        Guid walletId,
+        LedgerEntryType type,
+        Money amount,
+        Guid? idempotencyKey,
+        Guid? transferId,
         DateTimeOffset now)
     {
         if (!Enum.IsDefined(type))
@@ -47,6 +81,7 @@ public sealed class LedgerEntry
             Type = type,
             Amount = amount,
             IdempotencyKey = idempotencyKey,
+            TransferId = transferId,
             CreatedAt = now
         };
     }
