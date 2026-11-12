@@ -5,4 +5,8 @@
     <Project Path="src/PulseWallet.Domain/PulseWallet.Domain.csproj" />
     <Project Path="src/PulseWallet.Infrastructure/PulseWallet.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PulseWallet.Application.UnitTests/PulseWallet.Application.UnitTests.csproj" />
+    <Project Path="tests/PulseWallet.Domain.UnitTests/PulseWallet.Domain.UnitTests.csproj" />
+  </Folder>
 </Solution>

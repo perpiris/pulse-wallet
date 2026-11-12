@@ -1,5 +1,4 @@
-# Runs on every push to master and on every pull request: the code must build and be formatted.
-# Tests get added here as a step once the first test project exists.
+# Runs on every push to master and on every pull request: the code must build, pass the tests and be formatted.
 name: CI
 
 on:
@@ -32,6 +31,9 @@ jobs:
       # (Directory.Build.props) apply here too, so a warning fails the build.
       - name: Build
         run: dotnet build PulseWallet.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test PulseWallet.slnx --no-build -c Release
 
       # Fails if any file doesn't match .editorconfig (indentation, spacing, final newline).
       - name: Check formatting
