@@ -1,5 +1,8 @@
 # PulseWallet
 
+[![CI](https://github.com/perpiris/pulse-wallet/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/perpiris/pulse-wallet/actions/workflows/ci.yml)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)
+
 A digital wallet API built with .NET 10 and domain-driven design. Users create a wallet with a unique username and a base currency, top it up, withdraw from it and send money to other wallets, with currency conversion when the wallets use different currencies.
 
 PulseWallet is a learning project: the aim is a realistic fintech backend that shows clean architecture, DDD and production-minded practices, built step by step.
@@ -47,7 +50,6 @@ A web client for creating wallets, viewing balances and transaction history, and
 ## Optional / future
 
 Secondary for this project, possible later:
-- CI pipeline (build and tests on every push, GitHub Actions)
 - Cloud deployment (Azure)
 - Container orchestration
 
@@ -75,12 +77,13 @@ Secondary for this project, possible later:
 - [x] `LedgerEntry` model and migration (`AddLedgerEntries`)
 - [x] Wallet details include the 10 latest ledger entries
 - [x] Top up and withdraw (`POST /api/wallets/{id}/top-ups`, `/withdrawals`; 422 on insufficient funds)
-- [ ] Full transaction history (paged)
-- [ ] Transfers between wallets
+- [x] Wallet history (`GET /api/wallets/{id}/ledger-entries`: date range, incoming/outgoing, keyset paging; transfer rows show the other wallet's username)
+- [x] Instant transfers between wallets in the same currency (`POST /api/transfers`, `GET /api/transfers/{id}`)
 - [ ] Exchange rates client
 - [ ] Transfers between wallets in different currencies
 
 **Testing**
+- [x] Test projects (xUnit v3 + NSubstitute) with a first example each
 - [ ] Domain unit tests
 - [ ] Handler unit tests
 - [ ] API integration tests (Testcontainers)
@@ -88,7 +91,7 @@ Secondary for this project, possible later:
 
 **Advanced**
 - [x] Optimistic concurrency (row version on wallets, 409 on conflict) + read committed snapshot isolation
-- [x] Idempotency keys (`Idempotency-Key` header on top-up and withdraw: a retry replays, a reused key is a 422)
+- [x] Idempotency keys (`Idempotency-Key` header on top-up, withdraw and transfers: a retry replays, a reused key is a 422)
 - [ ] Resilience for the exchange rate client (timeouts, retries, circuit breaker)
 - [ ] Exchange rate caching
 - [ ] Domain events + transactional outbox
@@ -103,7 +106,7 @@ Secondary for this project, possible later:
 - [ ] Send money
 
 **Optional / future**
-- [ ] CI pipeline
+- [x] CI pipeline (GitHub Actions: build, tests, format check)
 - [ ] Cloud deployment
 
 ## Architecture
@@ -114,6 +117,9 @@ src/
   PulseWallet.Application      Use cases: one handler per operation, commands, results
   PulseWallet.Domain           Business model and rules: entities, value objects, domain exceptions, repository interfaces
   PulseWallet.Infrastructure   Technical details: EF Core, SQL Server, repository and query implementations
+tests/
+  PulseWallet.Domain.UnitTests        Business rules, no mocks
+  PulseWallet.Application.UnitTests   Handlers, with NSubstitute for repositories and queries
 ```
 
 Dependencies point inward:
@@ -135,7 +141,9 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **One handler per use case**, no mediator library
 - **Request → Command in, Result → Response out:** the HTTP contract is kept separate from the use cases
 - **Repository per aggregate + unit of work** for writes; reads go through query services (`IWalletQueries`) that project straight into read models (CQRS-lite)
-- **Ledger:** every balance change is an append-only `LedgerEntry` with a positive amount; its type gives the direction. A transfer will be two entries, one per wallet. Entries are never deleted
+- **Ledger:** every balance change is an append-only `LedgerEntry` with a positive amount; its type gives the direction. Entries are never deleted, and only `Wallet` can create them (the factory methods are `internal`), so an entry never exists without its balance change
+- **Transfers:** one endpoint (`POST /api/transfers`) for every kind of transfer; cross-currency and future-dated transfers will extend the same request. A transfer is a `Transfer` row plus two ledger entries (`TransferOut` on the sender, `TransferIn` on the receiver) that point to it. `Transfer.Execute` changes both wallets in one transaction, on purpose: an instant transfer must never be half done. The idempotency key lives on the `Transfer`, unique per sender. A deadlock (SQL error 1205) returns 409 like any other conflict
+- **Wallet history** uses keyset paging: an opaque `nextCursor` (the last entry's `CreatedAt` + `Id`) instead of page numbers, so new entries never shift the pages
 - **`Money` value object** for amounts that travel with their currency; amounts someone enters are rejected, never rounded
 - **Top-up and withdraw are separate operations** (`Wallet.TopUp`, `Wallet.Withdraw`): the wallet changes its balance and returns the ledger entry, and both are saved in one transaction
 - **Optimistic concurrency:** a `rowversion` on `Wallets` (an EF shadow property, so the domain stays clean). A conflicting save returns 409 and the client retries
@@ -146,10 +154,11 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **Enums travel as text** in JSON (`"EUR"`, never `0`)
 - **Contracts are records:** responses positional, requests non-positional with `required` properties (a missing field is a 400, never a silent default)
 - **Code style enforced in the build:** explicit types instead of `var`, block bodies for methods
+- **Tests:** xUnit v3 on Microsoft Testing Platform (opted in through `global.json`), xUnit's own assertions, NSubstitute for test doubles. Domain tests use no mocks; the domain receives `now`, so time needs no fake
 
 ## Tech stack
 
-.NET 10 · ASP.NET Core (controllers) · EF Core 10 · SQL Server 2025 · Serilog · Swagger UI · Docker Compose
+.NET 10 · ASP.NET Core (controllers) · EF Core 10 · SQL Server 2025 · Serilog · Swagger UI · Docker Compose · xUnit v3 · NSubstitute · GitHub Actions
 
 ## Running locally
 
@@ -175,6 +184,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 Useful commands:
 
 ```bash
+dotnet test                     # run the unit tests (no Docker needed)
 docker compose logs -f api      # follow the API logs
 docker compose down             # stop (data is kept)
 docker compose down -v          # stop and delete the database

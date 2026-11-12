@@ -35,7 +35,7 @@ internal sealed class WalletQueries : IWalletQueries
                     .OrderByDescending(e => e.CreatedAt)
                     .ThenByDescending(e => e.Id)
                     .Take(recentEntries)
-                    .Select(e => new LedgerEntryDetails(e.Id, e.Type, e.Amount.Amount, e.Amount.Currency, e.CreatedAt, e.TransferId))
+                    .Select(LedgerEntryDetails.Projection(walletId, _dbContext.Transfers, _dbContext.Wallets))
                     .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -86,7 +86,7 @@ internal sealed class WalletQueries : IWalletQueries
             .OrderByDescending(e => e.CreatedAt)
             .ThenByDescending(e => e.Id)
             .Take(filter.PageSize + 1)
-            .Select(e => new LedgerEntryDetails(e.Id, e.Type, e.Amount.Amount, e.Amount.Currency, e.CreatedAt, e.TransferId))
+            .Select(LedgerEntryDetails.Projection(walletId, _dbContext.Transfers, _dbContext.Wallets))
             .ToListAsync(cancellationToken);
 
         if (items.Count <= filter.PageSize)

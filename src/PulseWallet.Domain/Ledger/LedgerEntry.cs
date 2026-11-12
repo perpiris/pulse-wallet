@@ -26,7 +26,8 @@ public sealed class LedgerEntry
         return Type == type && Amount == amount;
     }
 
-    public static LedgerEntry Create(
+    // Internal: only Wallet creates entries, so an entry never exists without its balance change.
+    internal static LedgerEntry Create(
         Guid walletId,
         LedgerEntryType type,
         Money amount,
@@ -41,7 +42,7 @@ public sealed class LedgerEntry
         return Create(walletId, type, amount, idempotencyKey, transferId: null, now);
     }
 
-    public static LedgerEntry CreateForTransfer(
+    internal static LedgerEntry CreateForTransfer(
         Guid walletId,
         LedgerEntryType type,
         Money amount,
