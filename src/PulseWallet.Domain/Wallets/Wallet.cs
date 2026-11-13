@@ -38,6 +38,11 @@ public sealed class Wallet
                 $"Username must be between {UsernameMinLength} and {UsernameMaxLength} characters long.");
         }
 
+        if (!Enum.IsDefined(currency))
+        {
+            throw new DomainException($"Currency '{currency}' is not supported.");
+        }
+
         return new Wallet
         {
             Id = Guid.CreateVersion7(),
@@ -67,7 +72,6 @@ public sealed class Wallet
         return entry;
     }
 
-    // Internal: only Transfer.Execute calls these, so a transfer can't be half done from outside the domain.
     internal LedgerEntry SendTransfer(Guid transferId, Money amount, DateTimeOffset now)
     {
         EnsureSameCurrency(amount);
