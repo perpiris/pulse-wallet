@@ -7,6 +7,7 @@ using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
 using PulseWallet.Domain.Common;
 using PulseWallet.Domain.Wallets;
+using Serilog;
 
 namespace PulseWallet.Api.ErrorHandling;
 
@@ -21,11 +22,16 @@ public class GlobalExceptionHandler : IExceptionHandler
     private const int DeadlockVictim = 1205;
 
     private readonly IProblemDetailsService _problemDetailsService;
+    private readonly IDiagnosticContext _diagnosticContext;
     private readonly ILogger<GlobalExceptionHandler> _logger;
 
-    public GlobalExceptionHandler(IProblemDetailsService problemDetailsService, ILogger<GlobalExceptionHandler> logger)
+    public GlobalExceptionHandler(
+        IProblemDetailsService problemDetailsService,
+        IDiagnosticContext diagnosticContext,
+        ILogger<GlobalExceptionHandler> logger)
     {
         _problemDetailsService = problemDetailsService;
+        _diagnosticContext = diagnosticContext;
         _logger = logger;
     }
 
@@ -54,6 +60,14 @@ public class GlobalExceptionHandler : IExceptionHandler
                 httpContext.Request.Method, httpContext.Request.Path);
         }
 
+        string detail = GetDetail(exception, statusCode);
+
+        // Added to the request log line (UseSerilogRequestLogging), so a 4xx says why it happened
+        // ("Insufficient funds", "Idempotency key reused") instead of only the status code.
+        // Only what the client is also told: safe to log, and never the internal details of a 500.
+        _diagnosticContext.Set("ProblemTitle", title);
+        _diagnosticContext.Set("ProblemDetail", detail);
+
         httpContext.Response.StatusCode = statusCode;
 
         return await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
@@ -64,7 +78,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             {
                 Status = statusCode,
                 Title = title,
-                Detail = GetDetail(exception, statusCode)
+                Detail = detail
             }
         });
     }

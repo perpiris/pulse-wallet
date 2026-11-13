@@ -3,23 +3,45 @@ using PulseWallet.Application;
 using PulseWallet.Infrastructure;
 using Serilog;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+// Logs startup failures (missing connection string, bad configuration) before the real logger exists.
+// AddSerilog replaces it once the host is built.
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services
-    .AddSerilogLogging(builder.Configuration)
-    .AddApplication()
-    .AddInfrastructure(builder.Configuration)
-    .AddApi()
-    .AddDatabaseHealthChecks(builder.Configuration);
+try
+{
+    WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-WebApplication app = builder.Build();
+    builder.Services
+        .AddSerilogLogging(builder.Configuration, builder.Environment)
+        .AddApplication()
+        .AddInfrastructure(builder.Configuration)
+        .AddApi()
+        .AddDatabaseHealthChecks(builder.Configuration);
 
-// The middleware pipeline stays here, in order: the order matters, so it should be visible at a glance.
-app.UseSerilogRequestLogging(); // outermost, so it logs the final status code (after errors are turned into 4xx/5xx)
-app.UseExceptionHandler();      // next, so it catches exceptions from everything after it
-app.UseApiDocumentation();
-app.UseAuthorization();
-app.MapControllers();
-app.MapHealthChecks("/health");
+    WebApplication app = builder.Build();
 
-app.Run();
+    // The middleware pipeline stays here, in order: the order matters, so it should be visible at a glance.
+    app.UseSerilogRequestLogging(); // outermost, so it logs the final status code (after errors are turned into 4xx/5xx)
+    app.UseExceptionHandler();      // next, so it catches exceptions from everything after it
+    app.UseApiDocumentation();
+    app.UseAuthorization();
+    app.MapControllers();
+    app.MapHealthChecks("/health");
+
+    app.Run();
+
+    return 0;
+}
+catch (Exception exception) when (exception is not HostAbortedException)
+{
+    Log.Fatal(exception, "PulseWallet terminated unexpectedly");
+
+    // A non-zero exit code tells Docker / the orchestrator the process crashed, so it restarts it.
+    return 1;
+}
+finally
+{
+    Log.CloseAndFlush();
+}

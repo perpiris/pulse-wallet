@@ -1,17 +1,43 @@
 using System.Text.Json.Serialization;
 using PulseWallet.Api.ErrorHandling;
 using Serilog;
+using Serilog.Formatting.Compact;
+using Serilog.Sinks.SystemConsole.Themes;
 
 namespace PulseWallet.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddSerilogLogging(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddSerilogLogging(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        services.AddSerilog((serviceProvider, config) => config
-            .ReadFrom.Configuration(configuration)
-            .ReadFrom.Services(serviceProvider)
-            .Enrich.FromLogContext());
+        // Levels, overrides and properties come from appsettings; the console format is chosen here.
+        // (Configuration merges WriteTo arrays by index, so overriding the sink per environment in
+        // appsettings would hand Serilog both a formatter and a theme for the same sink.)
+        services.AddSerilog((serviceProvider, config) =>
+        {
+            config
+                .ReadFrom.Configuration(configuration)
+                .ReadFrom.Services(serviceProvider)
+                .Enrich.FromLogContext();
+
+            if (environment.IsDevelopment())
+            {
+                // Readable, coloured text for a person watching the terminal. Text output shows no properties by
+                // default, so {ProblemDetail} is added to say why a request failed. It is empty on every other line.
+                config.WriteTo.Console(
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {ProblemDetail:l}{NewLine}{Exception}",
+                    theme: AnsiConsoleTheme.Code);
+            }
+            else
+            {
+                // One JSON object per line: every property (TraceId, RequestId, WalletId...) becomes a searchable
+                // field in a log collector, and there are no ANSI colour codes in container logs.
+                config.WriteTo.Console(new RenderedCompactJsonFormatter());
+            }
+        });
 
         return services;
     }
