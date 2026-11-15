@@ -1,7 +1,7 @@
 # PulseWallet
 
 [![CI](https://github.com/perpiris/pulse-wallet/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/perpiris/pulse-wallet/actions/workflows/ci.yml)
-![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)
+[![.NET](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 
 A digital wallet API built with .NET 10 and domain-driven design. Users create a wallet with a unique username and a base currency, top it up, withdraw from it and send money to other wallets, with currency conversion when the wallets use different currencies.
 
