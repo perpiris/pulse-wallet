@@ -45,8 +45,10 @@ These are the problems real payment systems have to solve, and the main things t
 A web client for creating wallets, viewing balances and transaction history, and sending money, built with **Angular**: batteries included, and common in enterprise and banking.
 
 - Lives in `web/`, in the same repository as the API, so a change to the HTTP contract is one commit that updates both sides
-- Standalone components, signals and zoneless change detection; RxJS for streams of events (search input, HTTP)
-- Tailwind CSS for styling, the Angular CDK for behaviour (dialogs, overlays) instead of Angular Material
+- Standalone components, signals and zoneless change detection; resources (`rxResource`) for loading data instead of subscribe-and-flags
+- Grouped by feature (`wallets/`), with app-wide pieces in `core/`; a typed API service per resource, and one interceptor that turns ProblemDetails responses into a single `ApiError`
+- Tailwind CSS for styling, with a light and a dark theme (follows the OS until the user picks one); the Angular CDK for behaviour (dialogs, overlays) instead of Angular Material
+- ESLint (Angular and accessibility rules) and Prettier, like the analyzers and `dotnet format` on the API side
 - No server-side rendering: a wallet is an interactive app with per-user data and nothing to index, so a static build served by nginx is enough
 - The browser only talks to its own origin: `/api` is forwarded to the API (by the dev server locally, by nginx in Docker), so the API needs no CORS
 
@@ -106,8 +108,10 @@ Secondary for this project, possible later:
 **Frontend**
 - [x] Choose a framework: Angular
 - [x] Angular app (Tailwind, Vitest) served by nginx, started with the rest of the stack by Docker Compose
-- [ ] Connect to the API (`/api` proxy, typed API services, ProblemDetails errors)
-- [ ] Create wallet, balance and history screens
+- [x] Connect to the API (`/api` proxy, typed API services, ProblemDetails errors)
+- [x] Look up a wallet by ID: balance and latest transactions
+- [x] Light and dark theme, ESLint and Prettier
+- [ ] Create wallet and history screens
 - [ ] Send money
 
 **Optional / future**
@@ -166,7 +170,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 
 .NET 10 · ASP.NET Core (controllers) · EF Core 10 · SQL Server 2025 · Serilog · Swagger UI · Docker Compose · xUnit v3 · NSubstitute · GitHub Actions
 
-Angular 22 · TypeScript · Tailwind CSS 4 · Vitest · nginx
+Angular 22 · TypeScript · Tailwind CSS 4 · Vitest · ESLint · Prettier · nginx
 
 ## Running locally
 
@@ -210,12 +214,16 @@ dotnet user-secrets set "ConnectionStrings:PulseWallet" "Server=localhost,1433;D
 ```
 
 ### Working on the frontend
-**Prerequisites:** Node.js 24 and the Angular CLI (`npm install -g @angular/cli`).
+**Prerequisites:** Node.js 24 and the Angular CLI (`npm install -g @angular/cli`). The app's structure and an Angular 15–17 → 22 cheat sheet are in [web/README.md](web/README.md).
+
+`npm start` forwards `/api` to the API on http://localhost:5147 (`web/proxy.conf.json`), so run the API too (Docker or the IDE).
 
 ```bash
 cd web
 npm install       # once, and after package changes
 npm start         # dev server with live reload at http://localhost:4200 (stop the web container first, it uses the same port)
 npm test          # unit tests (Vitest)
+npm run lint      # ESLint
+npm run format    # Prettier (format:check to only check)
 npm run build     # production build into web/dist
 ```

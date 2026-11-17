@@ -1,0 +1,88 @@
+<article
+  class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+>
+  <header class="bg-linear-to-br from-indigo-600 to-violet-700 p-6 text-white">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <!--
+          &#64; is an escaped "@". A plain @ in a template starts a control flow block (@if, @for),
+          so a literal one has to be written as &#64; (or {{ '@' }}).
+        -->
+        <h2 class="text-lg font-semibold">&#64;{{ wallet().username }}</h2>
+        <p class="truncate font-mono text-xs text-indigo-100">{{ wallet().id }}</p>
+      </div>
+      <span class="shrink-0 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium">
+        {{ wallet().currency }}
+      </span>
+    </div>
+    <p class="mt-6 text-sm text-indigo-100">Balance</p>
+    <p class="text-4xl font-bold tracking-tight tabular-nums">
+      {{ wallet().balance | currency: wallet().currency }}
+    </p>
+    <!-- `| date` is a pipe: it formats a value for display. 'mediumDate' → "Nov 17, 2026". -->
+    <p class="mt-2 text-xs text-indigo-100">
+      Created {{ wallet().createdAt | date: 'mediumDate' }}
+    </p>
+  </header>
+
+  <section class="p-6" aria-labelledby="latest-transactions">
+    <h3
+      id="latest-transactions"
+      class="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400"
+    >
+      Latest transactions
+    </h3>
+    @if (entries().length === 0) {
+      <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">No transactions yet.</p>
+    } @else {
+      <ul class="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+        <!--
+          @for replaces *ngFor. `track` is required: it tells Angular how to recognise the same item
+          between renders (here by id), so it only updates the rows that changed instead of rebuilding the list.
+          For "nothing to show", @for also has an @empty block; the @if above is used instead so the <ul> isn't rendered empty.
+        -->
+        @for (entry of entries(); track entry.id) {
+          <li class="flex items-center gap-4 py-3">
+            <!--
+              [class]="'a b c'" adds a whole string of classes and keeps the static class="" ones.
+              Handy when a condition switches several classes at once, as here (light + dark colours).
+            -->
+            <span
+              aria-hidden="true"
+              class="grid size-10 shrink-0 place-items-center rounded-full"
+              [class]="entry.incoming ? incomingIcon : outgoingIcon"
+            >
+              <svg
+                class="size-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                @if (entry.incoming) {
+                  <path d="M12 5v14M5 12l7 7 7-7" />
+                } @else {
+                  <path d="M12 19V5M5 12l7-7 7 7" />
+                }
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium">{{ entry.description }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                {{ entry.createdAt | date: 'medium' }}
+              </p>
+            </div>
+            <p
+              class="text-sm font-semibold tabular-nums"
+              [class]="entry.incoming ? 'text-emerald-700 dark:text-emerald-400' : ''"
+            >
+              {{ entry.incoming ? '+' : '−' }}{{ entry.amount | currency: entry.currency }}
+            </p>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</article>

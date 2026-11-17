@@ -67,6 +67,8 @@ services:
       context: web
     ports:
       - "4200:8080"
+    depends_on:
+      - api   # nginx resolves the "api" host name at startup and exits if it doesn't exist yet
 
 volumes:
   sqlserver-data:
