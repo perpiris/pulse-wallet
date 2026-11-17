@@ -19,6 +19,14 @@ export interface LedgerEntry {
   counterpartyUsername: string | null;
 }
 
+export type LedgerEntryDirection = 'Incoming' | 'Outgoing';
+
+// One page of history. `nextCursor` is opaque: send it back as `before` to get the next page; null means no more pages.
+export interface LedgerEntriesPage {
+  items: LedgerEntry[];
+  nextCursor: string | null;
+}
+
 export interface WalletDetails {
   id: string;
   username: string;
@@ -33,4 +41,12 @@ export interface WalletDetails {
 export interface CreateWalletRequest {
   username: string;
   currency: Currency;
+}
+
+// Query string for GET /api/wallets/{id}/ledger-entries. Dates are "yyyy-MM-dd", like C#'s DateOnly.
+export interface LedgerEntriesQuery {
+  from?: string;
+  to?: string;
+  direction?: LedgerEntryDirection;
+  before?: string;
 }

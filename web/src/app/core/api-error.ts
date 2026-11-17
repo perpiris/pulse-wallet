@@ -21,6 +21,12 @@ export class ApiError extends Error {
     super(detail);
   }
 
+  // For catch blocks and resource errors, which are typed `unknown`: the interceptor already turned
+  // HTTP failures into ApiError, so anything else is a bug in our own code and gets a generic message.
+  static of(error: unknown): ApiError {
+    return error instanceof ApiError ? error : ApiError.unexpected();
+  }
+
   static unexpected(): ApiError {
     return new ApiError(0, 'Unexpected error', 'Something went wrong. Please try again.');
   }

@@ -20,6 +20,8 @@ src/
       wallet.models.ts    response types, mirroring the API's C# records
       wallet-search/      a page (routed): owns state, talks to the API
       create-wallet/      a page (routed): a Signal Forms form
+      wallet-history/     a page (routed): filters + paging
+      ledger-entry-row/   one transaction row, shared by the card and the history page
       wallet-card/        a presentational component: only displays its input
 ```
 
@@ -38,6 +40,7 @@ Grouped by feature, not by kind: no top-level `components/`, `services/`, `model
 | `@Injectable({ providedIn: 'root' })`                         | `@Service()`                                                                             | `wallets-api.ts`                      |
 | Class interceptors + `HTTP_INTERCEPTORS`                      | Functions + `withInterceptors([...])`                                                    | `core/problem-details.interceptor.ts` |
 | `@Input()` / `@Output()`                                      | `input()`, `input.required()`, `output()`, `model()`                                     | `wallet-card.ts`                      |
+| `@HostBinding('class')`                                       | `host: { class: '...' }` in `@Component`                                                 | `ledger-entry-row.ts`                 |
 | Fields + manual change detection, `BehaviorSubject` for state | `signal()`, `computed()`, `linkedSignal()`                                               | `wallet-search.ts`                    |
 | `ActivatedRoute.queryParams.subscribe(...)`                   | `withComponentInputBinding()` + `input()` named like the param                           | `wallet-search.ts` (`?id=`)           |
 | `subscribe()` + loading flags + `takeUntil(destroy$)`         | `resource()` / `rxResource()` / `httpResource()`                                         | `wallet-search.ts`                    |

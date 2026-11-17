@@ -1,0 +1,41 @@
+<!--
+  [class]="'a b c'" adds a whole string of classes and keeps the static class="" ones.
+  Handy when a condition switches several classes at once, as here (light + dark colours).
+-->
+<span
+  aria-hidden="true"
+  class="grid size-10 shrink-0 place-items-center rounded-full"
+  [class]="iconClasses()"
+>
+  <svg
+    class="size-5"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    @if (incoming()) {
+      <path d="M12 5v14M5 12l7 7 7-7" />
+    } @else {
+      <path d="M12 19V5M5 12l7-7 7 7" />
+    }
+  </svg>
+</span>
+<div class="min-w-0 flex-1">
+  <p class="truncate text-sm font-medium">{{ description() }}</p>
+  <!-- `| date` is a pipe: it formats a value for display. 'medium' → "Nov 17, 2026, 11:34:22 PM". -->
+  <p class="text-xs text-slate-500 dark:text-slate-400">{{ entry().createdAt | date: 'medium' }}</p>
+</div>
+<!--
+  `number: '1.2-2'` = at least 1 integer digit, exactly 2 decimals, with thousands separators.
+  The currency code is shown as text rather than with the currency pipe, which has a symbol for
+  EUR and USD (€, $) but writes DKK as "DKK0.00". This way every currency looks the same: "1,234.50 DKK".
+-->
+<p
+  class="text-sm font-semibold whitespace-nowrap tabular-nums"
+  [class]="incoming() ? 'text-emerald-700 dark:text-emerald-400' : ''"
+>
+  {{ incoming() ? '+' : '−' }}{{ entry().amount | number: '1.2-2' }} {{ entry().currency }}
+</p>

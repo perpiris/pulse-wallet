@@ -16,5 +16,12 @@ export const routes: Routes = [
       import('./wallets/create-wallet/create-wallet').then((m) => m.CreateWallet),
     title: 'Create a wallet · PulseWallet',
   },
+  {
+    // :id is a route parameter; WalletHistory receives it as its `id` input.
+    path: 'wallets/:id/history',
+    loadComponent: () =>
+      import('./wallets/wallet-history/wallet-history').then((m) => m.WalletHistory),
+    title: 'History · PulseWallet',
+  },
   { path: '**', redirectTo: '' },
 ];

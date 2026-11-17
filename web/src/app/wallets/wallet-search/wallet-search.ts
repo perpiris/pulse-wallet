@@ -59,12 +59,8 @@ export class WalletSearch {
     stream: ({ params }) => this.walletsApi.getById(params),
   });
 
-  // The interceptor turns HTTP failures into ApiError; anything else (a bug in our own code) gets a generic message.
   protected readonly error = computed(() => {
     const error = this.wallet.error();
-    if (error === undefined) {
-      return undefined;
-    }
-    return error instanceof ApiError ? error : ApiError.unexpected();
+    return error === undefined ? undefined : ApiError.of(error);
   });
 }

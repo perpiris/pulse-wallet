@@ -112,7 +112,7 @@ Secondary for this project, possible later:
 - [x] Look up a wallet by ID: balance and latest transactions
 - [x] Light and dark theme, ESLint and Prettier
 - [x] Create wallet (Signal Forms, client checks mirroring the domain rules, API errors shown on the form)
-- [ ] History screen
+- [x] History screen (direction and date filters, "Load more" with the keyset cursor)
 - [ ] Send money
 
 **Optional / future**

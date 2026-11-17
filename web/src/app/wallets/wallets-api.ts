@@ -1,7 +1,12 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreateWalletRequest, WalletDetails } from './wallet.models';
+import {
+  CreateWalletRequest,
+  LedgerEntriesPage,
+  LedgerEntriesQuery,
+  WalletDetails,
+} from './wallet.models';
 
 // @Service() (v22) is the short form of @Injectable({ providedIn: 'root' }): one shared instance
 // for the whole app, created the first time something inject()s it.
@@ -21,5 +26,17 @@ export class WalletsApi {
 
   create(request: CreateWalletRequest): Observable<WalletDetails> {
     return this.http.post<WalletDetails>('/api/wallets', request);
+  }
+
+  getLedgerEntries(id: string, query: LedgerEntriesQuery): Observable<LedgerEntriesPage> {
+    // HttpParams is immutable: set() returns a new instance, it doesn't change this one.
+    // Filters that aren't set are left out of the URL entirely, so the API sees "no filter", not an empty value.
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value) {
+        params = params.set(key, value);
+      }
+    }
+    return this.http.get<LedgerEntriesPage>(`/api/wallets/${id}/ledger-entries`, { params });
   }
 }
