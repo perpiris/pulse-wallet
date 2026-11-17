@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
-import { WalletDetails } from './wallet.models';
+import { CreateWalletRequest, WalletDetails } from './wallet.models';
 
 // @Service() (v22) is the short form of @Injectable({ providedIn: 'root' }): one shared instance
 // for the whole app, created the first time something inject()s it.
@@ -17,5 +17,9 @@ export class WalletsApi {
   // nothing checks at runtime that the JSON really looks like that.
   getById(id: string): Observable<WalletDetails> {
     return this.http.get<WalletDetails>(`/api/wallets/${id}`);
+  }
+
+  create(request: CreateWalletRequest): Observable<WalletDetails> {
+    return this.http.post<WalletDetails>('/api/wallets', request);
   }
 }

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { ApiError } from '../../core/api-error';
 import { WalletCard } from '../wallet-card/wallet-card';
@@ -24,10 +24,18 @@ export class WalletSearch {
   // It works in field initializers, so the dependencies sit next to the code that uses them.
   private readonly walletsApi = inject(WalletsApi);
 
+  // The ?id=... query parameter, filled in by the router (withComponentInputBinding in app.config.ts).
+  // "Create wallet" navigates here with the new wallet's ID, so its card shows straight away.
+  readonly id = input<string>();
+
   // A signal is a value that tells Angular when it changes: read it by calling it (`query()`),
   // change it with `set()` or `update()`. Templates that read a signal re-render when it changes.
   // `protected`: the template can use it (templates count as part of the class), other code can't.
-  protected readonly query = signal('');
+  //
+  // linkedSignal: a writable signal that resets whenever its source changes. Typing sets it as usual;
+  // a navigation with a new ?id= replaces whatever was typed. A plain signal() couldn't follow the input,
+  // a computed() couldn't be typed into.
+  protected readonly query = linkedSignal(() => this.id() ?? '');
 
   // computed() derives a signal from other signals. It recalculates only when `query` changes,
   // and caches the result in between, so the template can read it as often as it likes.

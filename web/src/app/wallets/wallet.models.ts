@@ -27,3 +27,10 @@ export interface WalletDetails {
   createdAt: string;
   recentEntries: LedgerEntry[];
 }
+
+// Request bodies. Same rule as the C# side: requests and responses are separate types,
+// even when they overlap, so one can change without the other.
+export interface CreateWalletRequest {
+  username: string;
+  currency: Currency;
+}

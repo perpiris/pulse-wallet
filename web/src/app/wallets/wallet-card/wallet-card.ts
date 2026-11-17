@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { LedgerEntry, WalletDetails } from '../wallet.models';
 
@@ -14,11 +14,11 @@ interface EntryRow {
 // A presentational component: it only displays the data it's given. It doesn't call the API or know
 // where the wallet came from, so it can be reused anywhere a wallet needs showing.
 //
-// Pipes are imported one by one (CurrencyPipe, DatePipe) instead of importing CommonModule,
+// Pipes are imported one by one (DatePipe, DecimalPipe: the `number` pipe) instead of importing CommonModule,
 // so the bundle only contains what the template uses.
 @Component({
   selector: 'app-wallet-card',
-  imports: [CurrencyPipe, DatePipe],
+  imports: [DatePipe, DecimalPipe],
   templateUrl: './wallet-card.html',
 })
 export class WalletCard {

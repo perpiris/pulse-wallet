@@ -1,0 +1,94 @@
+<section class="space-y-8">
+  <div>
+    <h1 class="text-3xl font-bold tracking-tight">Create a wallet</h1>
+    <p class="mt-2 text-slate-600 dark:text-slate-400">
+      Pick a unique username and the currency the wallet holds.
+    </p>
+  </div>
+
+  <!--
+    [formRoot] connects the <form> to the FieldTree: it stops the browser's own submit (no page reload),
+    turns off the browser's built-in validation popups, and runs the submission action from create-wallet.ts.
+  -->
+  <form
+    [formRoot]="walletForm"
+    class="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+  >
+    <!-- Form-level errors: the ones the submission returned without a fieldTree (network, unexpected 400/500). -->
+    @for (error of walletForm().errors(); track $index) {
+      <div
+        role="alert"
+        class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+      >
+        {{ error.message }}
+      </div>
+    }
+
+    <div>
+      <label for="username" class="block text-sm font-medium">Username</label>
+      <!--
+        [formField] two-way binds this input to walletForm.username: typing updates the model signal,
+        and the field's state is mirrored onto the input (disabled, required, and touched on blur).
+        `touched() && invalid()`: don't shout at people before they've left the field or pressed submit.
+      -->
+      <input
+        id="username"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        [formField]="walletForm.username"
+        [attr.aria-invalid]="walletForm.username().touched() && walletForm.username().invalid()"
+        aria-describedby="username-help username-errors"
+        class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 focus:outline-none aria-invalid:border-red-500 aria-invalid:focus:ring-red-500/20 dark:border-slate-700 dark:bg-slate-950 dark:focus:border-indigo-400"
+      />
+      <p id="username-help" class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        3–20 letters, digits or underscores. Saved in lowercase.
+      </p>
+      <div id="username-errors">
+        @if (walletForm.username().touched()) {
+          <!-- errors() lists every failing rule, plus server errors like "username already taken" (409). -->
+          @for (error of walletForm.username().errors(); track $index) {
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error.message }}</p>
+          }
+        }
+      </div>
+    </div>
+
+    <div>
+      <label for="currency" class="block text-sm font-medium">Currency</label>
+      <select
+        id="currency"
+        [formField]="walletForm.currency"
+        class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:focus:border-indigo-400"
+      >
+        @for (currency of currencies; track currency) {
+          <option [value]="currency">{{ currency }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- submitting() is true while the action's Promise runs: disables the button against double submits. -->
+    <button
+      type="submit"
+      [disabled]="walletForm().submitting()"
+      class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/30 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      @if (walletForm().submitting()) {
+        <svg aria-hidden="true" class="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
+        </svg>
+        Creating…
+      } @else {
+        Create wallet
+      }
+    </button>
+  </form>
+</section>

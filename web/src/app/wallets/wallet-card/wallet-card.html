@@ -16,8 +16,14 @@
       </span>
     </div>
     <p class="mt-6 text-sm text-indigo-100">Balance</p>
+    <!--
+      `number: '1.2-2'` = at least 1 integer digit, exactly 2 decimals, with thousands separators.
+      The currency code is shown as text rather than with the currency pipe, which has a symbol for
+      EUR and USD (€, $) but writes DKK as "DKK0.00". This way every currency looks the same: "1,234.50 DKK".
+    -->
     <p class="text-4xl font-bold tracking-tight tabular-nums">
-      {{ wallet().balance | currency: wallet().currency }}
+      {{ wallet().balance | number: '1.2-2' }}
+      <span class="text-xl font-semibold text-indigo-100">{{ wallet().currency }}</span>
     </p>
     <!-- `| date` is a pipe: it formats a value for display. 'mediumDate' → "Nov 17, 2026". -->
     <p class="mt-2 text-xs text-indigo-100">
@@ -78,7 +84,8 @@
               class="text-sm font-semibold tabular-nums"
               [class]="entry.incoming ? 'text-emerald-700 dark:text-emerald-400' : ''"
             >
-              {{ entry.incoming ? '+' : '−' }}{{ entry.amount | currency: entry.currency }}
+              {{ entry.incoming ? '+' : '−' }}{{ entry.amount | number: '1.2-2' }}
+              {{ entry.currency }}
             </p>
           </li>
         }

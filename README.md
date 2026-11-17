@@ -111,7 +111,8 @@ Secondary for this project, possible later:
 - [x] Connect to the API (`/api` proxy, typed API services, ProblemDetails errors)
 - [x] Look up a wallet by ID: balance and latest transactions
 - [x] Light and dark theme, ESLint and Prettier
-- [ ] Create wallet and history screens
+- [x] Create wallet (Signal Forms, client checks mirroring the domain rules, API errors shown on the form)
+- [ ] History screen
 - [ ] Send money
 
 **Optional / future**
