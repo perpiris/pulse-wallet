@@ -5,7 +5,7 @@
 
 A digital wallet API built with .NET 10 and domain-driven design. Users create a wallet with a unique username and a base currency, top it up, withdraw from it and send money to other wallets, with currency conversion when the wallets use different currencies.
 
-PulseWallet is a learning project: the aim is a realistic fintech backend that shows clean architecture, DDD and production-minded practices, built step by step.
+PulseWallet is a learning project: the aim is a realistic fintech backend that shows clean architecture, DDD and production-minded practices, built step by step, with an Angular web client on top.
 
 ## Goals
 
@@ -42,10 +42,13 @@ These are the problems real payment systems have to solve, and the main things t
 
 ## Frontend
 
-A web client for creating wallets, viewing balances and transaction history, and sending money. The framework hasn't been decided yet:
-- **React:** the most widely used, with a large ecosystem
-- **Angular:** batteries included, common in enterprise and banking
-- **Blazor:** C# end to end, sharing models with the API
+A web client for creating wallets, viewing balances and transaction history, and sending money, built with **Angular**: batteries included, and common in enterprise and banking.
+
+- Lives in `web/`, in the same repository as the API, so a change to the HTTP contract is one commit that updates both sides
+- Standalone components, signals and zoneless change detection; RxJS for streams of events (search input, HTTP)
+- Tailwind CSS for styling, the Angular CDK for behaviour (dialogs, overlays) instead of Angular Material
+- No server-side rendering: a wallet is an interactive app with per-user data and nothing to index, so a static build served by nginx is enough
+- The browser only talks to its own origin: `/api` is forwarded to the API (by the dev server locally, by nginx in Docker), so the API needs no CORS
 
 ## Optional / future
 
@@ -101,7 +104,9 @@ Secondary for this project, possible later:
 - [ ] Authentication
 
 **Frontend**
-- [ ] Choose a framework (React / Angular / Blazor)
+- [x] Choose a framework: Angular
+- [x] Angular app (Tailwind, Vitest) served by nginx, started with the rest of the stack by Docker Compose
+- [ ] Connect to the API (`/api` proxy, typed API services, ProblemDetails errors)
 - [ ] Create wallet, balance and history screens
 - [ ] Send money
 
@@ -120,6 +125,7 @@ src/
 tests/
   PulseWallet.Domain.UnitTests        Business rules, no mocks
   PulseWallet.Application.UnitTests   Handlers, with NSubstitute for repositories and queries
+web/                                  Angular client: built with Node, served by nginx in Docker
 ```
 
 Dependencies point inward:
@@ -160,6 +166,8 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 
 .NET 10 · ASP.NET Core (controllers) · EF Core 10 · SQL Server 2025 · Serilog · Swagger UI · Docker Compose · xUnit v3 · NSubstitute · GitHub Actions
 
+Angular 22 · TypeScript · Tailwind CSS 4 · Vitest · nginx
+
 ## Running locally
 
 **Prerequisites:** Docker Desktop.
@@ -177,15 +185,19 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
    dotnet ef database update --project src/PulseWallet.Infrastructure --startup-project src/PulseWallet.Api
    ```
 4. Open:
+   - Web app: http://localhost:4200
    - Swagger UI: http://localhost:5147/swagger
    - Health check: http://localhost:5147/health
    - Or call the endpoints from `src/PulseWallet.Api/PulseWallet.Api.http` (Rider / Visual Studio HTTP client). It generates a new `Idempotency-Key` on every call
 
 Useful commands:
 
+SQL Server is also reachable from your machine on `localhost,1433` (user `sa`, password from `.env`).
+
 ```bash
 dotnet test                     # run the unit tests (no Docker needed)
 docker compose logs -f api      # follow the API logs
+docker compose up --build web   # rebuild and restart only the web app
 docker compose down             # stop (data is kept)
 docker compose down -v          # stop and delete the database
 ```
@@ -195,4 +207,15 @@ Store the connection string as a user secret, pointing at the SQL Server contain
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:PulseWallet" "Server=localhost,1433;Database=PulseWallet;User Id=sa;Password=<your password>;Encrypt=True;TrustServerCertificate=True" --project src/PulseWallet.Api
+```
+
+### Working on the frontend
+**Prerequisites:** Node.js 24 and the Angular CLI (`npm install -g @angular/cli`).
+
+```bash
+cd web
+npm install       # once, and after package changes
+npm start         # dev server with live reload at http://localhost:4200 (stop the web container first, it uses the same port)
+npm test          # unit tests (Vitest)
+npm run build     # production build into web/dist
 ```

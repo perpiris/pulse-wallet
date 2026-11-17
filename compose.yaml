@@ -1,5 +1,5 @@
-# Local development stack: SQL Server + the API.
-#   docker compose up --build        start everything (API at http://localhost:5147/swagger)
+# Local development stack: SQL Server + the API + the Angular app.
+#   docker compose up --build        start everything (web at http://localhost:4200, API at http://localhost:5147/swagger)
 #   docker compose down              stop (data is kept in the sqlserver-data volume)
 #   docker compose down -v           stop and delete the database
 #
@@ -61,6 +61,12 @@ services:
     depends_on:
       sqlserver-init:
         condition: service_completed_successfully
+
+  web:
+    build:
+      context: web
+    ports:
+      - "4200:8080"
 
 volumes:
   sqlserver-data:
