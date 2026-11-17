@@ -1,10 +1,11 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   CreateWalletRequest,
   LedgerEntriesPage,
   LedgerEntriesQuery,
+  MoneyMovementRequest,
   WalletDetails,
 } from './wallet.models';
 
@@ -39,4 +40,30 @@ export class WalletsApi {
     }
     return this.http.get<LedgerEntriesPage>(`/api/wallets/${id}/ledger-entries`, { params });
   }
+
+  // Money-moving calls take an idempotency key: the caller creates one per operation and sends the same one
+  // on a retry, so a request that reached the server but whose response got lost can't move money twice.
+  topUp(
+    id: string,
+    request: MoneyMovementRequest,
+    idempotencyKey: string,
+  ): Observable<WalletDetails> {
+    return this.http.post<WalletDetails>(`/api/wallets/${id}/top-ups`, request, {
+      headers: idempotencyHeaders(idempotencyKey),
+    });
+  }
+
+  withdraw(
+    id: string,
+    request: MoneyMovementRequest,
+    idempotencyKey: string,
+  ): Observable<WalletDetails> {
+    return this.http.post<WalletDetails>(`/api/wallets/${id}/withdrawals`, request, {
+      headers: idempotencyHeaders(idempotencyKey),
+    });
+  }
+}
+
+function idempotencyHeaders(idempotencyKey: string): HttpHeaders {
+  return new HttpHeaders({ 'Idempotency-Key': idempotencyKey });
 }

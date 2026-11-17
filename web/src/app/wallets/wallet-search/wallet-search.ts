@@ -1,7 +1,14 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { ApiError } from '../../core/api-error';
+import {
+  MoneyMovementDialog,
+  MoneyMovementDialogData,
+  MoneyMovementKind,
+} from '../money-movement-dialog/money-movement-dialog';
 import { WalletCard } from '../wallet-card/wallet-card';
+import { WalletDetails } from '../wallet.models';
 import { WalletsApi } from '../wallets-api';
 
 const WALLET_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -23,6 +30,7 @@ export class WalletSearch {
   // inject() replaces constructor injection (`constructor(private walletsApi: WalletsApi)`).
   // It works in field initializers, so the dependencies sit next to the code that uses them.
   private readonly walletsApi = inject(WalletsApi);
+  private readonly dialog = inject(Dialog);
 
   // The ?id=... query parameter, filled in by the router (withComponentInputBinding in app.config.ts).
   // "Create wallet" navigates here with the new wallet's ID, so its card shows straight away.
@@ -63,4 +71,33 @@ export class WalletSearch {
     const error = this.wallet.error();
     return error === undefined ? undefined : ApiError.of(error);
   });
+
+  protected openMoneyDialog(kind: MoneyMovementKind): void {
+    if (!this.wallet.hasValue()) {
+      return;
+    }
+
+    // open<R, D>: R is what the dialog closes with, D the data it receives.
+    // The classes style the CDK's own elements: the dimmed backdrop and the pane that holds the dialog.
+    const dialogRef = this.dialog.open<WalletDetails, MoneyMovementDialogData>(
+      MoneyMovementDialog,
+      {
+        data: { wallet: this.wallet.value(), kind },
+        ariaLabelledBy: 'money-dialog-title',
+        width: 'calc(100% - 2rem)',
+        maxWidth: '28rem',
+        backdropClass: ['bg-slate-950/60', 'backdrop-blur-sm'],
+      },
+    );
+
+    // `closed` emits once, with the updated wallet or undefined (cancel, Escape, backdrop click), then completes,
+    // so this subscription ends on its own: no unsubscribe needed.
+    dialogRef.closed.subscribe((updated) => {
+      if (updated) {
+        // A resource's value can be set by hand: the API already returned the new balance and entries,
+        // so the card updates without fetching the wallet again.
+        this.wallet.set(updated);
+      }
+    });
+  }
 }

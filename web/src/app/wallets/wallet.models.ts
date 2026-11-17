@@ -50,3 +50,9 @@ export interface LedgerEntriesQuery {
   direction?: LedgerEntryDirection;
   before?: string;
 }
+
+// Body of POST /api/wallets/{id}/top-ups and /withdrawals. The currency must be the wallet's own.
+export interface MoneyMovementRequest {
+  amount: number;
+  currency: Currency;
+}

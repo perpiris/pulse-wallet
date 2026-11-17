@@ -14,13 +14,13 @@
     [formRoot]="walletForm"
     class="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
   >
-    <!-- Form-level errors: the ones the submission returned without a fieldTree (network, unexpected 400/500). -->
-    @for (error of walletForm().errors(); track $index) {
+    <!-- Failures that aren't about one field (network, unexpected 400/500): see submitError in create-wallet.ts. -->
+    @if (submitError(); as error) {
       <div
         role="alert"
         class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
       >
-        {{ error.message }}
+        {{ error }}
       </div>
     }
 

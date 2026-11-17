@@ -66,30 +66,29 @@ export class CreateWallet {
     },
   );
 
+  // Failures that aren't about one field. A plain signal rather than an error returned to the form:
+  // a returned error stays until a field changes and keeps the form invalid, so after a network error
+  // the same data couldn't be submitted again.
+  protected readonly submitError = signal<string | undefined>(undefined);
+
   // async/await instead of subscribe(): submission actions return a Promise, and
   // firstValueFrom turns the one-response Observable from HttpClient into one.
   private async create(field: FieldTree<CreateWalletRequest>): Promise<TreeValidationResult> {
+    this.submitError.set(undefined);
     try {
       const wallet = await firstValueFrom(this.walletsApi.create(field().value()));
       // Navigate to the lookup page with ?id=..., which shows the new wallet's card.
       await this.router.navigate(['/'], { queryParams: { id: wallet.id } });
       return undefined;
     } catch (error) {
-      // Returned errors are attached to the form like validation errors: a field-level one shows next
-      // to that input, one without `fieldTree` belongs to the whole form. `submitting()` resets either way.
-      return toFormErrors(error, field);
+      const apiError = ApiError.of(error);
+      // Returned errors are attached to the form like validation errors: this one shows under the
+      // username input and clears as soon as the username changes. `submitting()` resets either way.
+      if (apiError.status === 409) {
+        return { kind: 'server', fieldTree: field.username, message: apiError.detail };
+      }
+      this.submitError.set(apiError.detail);
+      return undefined;
     }
   }
-}
-
-function toFormErrors(error: unknown, field: FieldTree<CreateWalletRequest>): TreeValidationResult {
-  if (!(error instanceof ApiError)) {
-    return { kind: 'server', message: ApiError.unexpected().detail };
-  }
-
-  if (error.status === 409) {
-    return { kind: 'server', fieldTree: field.username, message: error.detail };
-  }
-
-  return { kind: 'server', message: error.detail };
 }

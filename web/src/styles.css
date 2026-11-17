@@ -4,6 +4,9 @@
 */
 @import 'tailwindcss';
 
+/* The CDK overlay's structural styles (positioning the dialog and backdrop above the page). No colours or looks: those come from Tailwind. */
+@import '@angular/cdk/overlay-prebuilt.css';
+
 /*
   By default Tailwind's `dark:` classes follow the OS setting (the prefers-color-scheme media query).
   This switches them to follow a `dark` class on <html> instead, so the app can have its own toggle.

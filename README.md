@@ -113,6 +113,7 @@ Secondary for this project, possible later:
 - [x] Light and dark theme, ESLint and Prettier
 - [x] Create wallet (Signal Forms, client checks mirroring the domain rules, API errors shown on the form)
 - [x] History screen (direction and date filters, "Load more" with the keyset cursor)
+- [x] Top up and withdraw (CDK dialog; one `Idempotency-Key` per operation, reused on retry; 422 insufficient funds on the amount)
 - [ ] Send money
 
 **Optional / future**
