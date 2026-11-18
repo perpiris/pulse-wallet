@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using PulseWallet.Application.ExchangeRates;
 using PulseWallet.Application.Ledger;
 using PulseWallet.Application.Transfers;
 using PulseWallet.Application.Wallets;
@@ -47,6 +48,7 @@ public partial class GlobalExceptionHandler : IExceptionHandler
             TransferNotFoundException => (StatusCodes.Status404NotFound, "Transfer not found"),
             FriendlyNameAlreadyUsedException => (StatusCodes.Status409Conflict, "Friendly name already used"),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Concurrent update"),
+            ExchangeRateUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Exchange rate unavailable"),
             DbUpdateException { InnerException: SqlException { Number: UniqueIndexViolation or UniqueConstraintViolation or DeadlockVictim } }
                 => (StatusCodes.Status409Conflict, "Concurrent update"),
             _ => (StatusCodes.Status500InternalServerError, "Server error")

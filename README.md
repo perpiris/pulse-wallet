@@ -84,7 +84,7 @@ Secondary for this project, possible later:
 - [x] Top up and withdraw (`POST /api/wallets/{id}/top-ups`, `/withdrawals`; 422 on insufficient funds)
 - [x] Wallet history (`GET /api/wallets/{id}/ledger-entries`: date range, incoming/outgoing, keyset paging; transfer rows show the email of the other wallet's owner)
 - [x] Instant transfers between wallets in the same currency (`POST /api/transfers`, `GET /api/transfers/{id}`)
-- [ ] Exchange rates client
+- [x] Exchange rates client (Frankfurter, ECB rates; typed `HttpClient`)
 - [ ] Transfers between wallets in different currencies
 
 **Testing**
@@ -97,7 +97,7 @@ Secondary for this project, possible later:
 **Advanced**
 - [x] Optimistic concurrency (row version on wallets, 409 on conflict) + read committed snapshot isolation
 - [x] Idempotency keys (`Idempotency-Key` header on top-up, withdraw and transfers: a retry replays, a reused key is a 422)
-- [ ] Resilience for the exchange rate client (timeouts, retries, circuit breaker)
+- [x] Resilience for the exchange rate client (timeouts, retries, circuit breaker)
 - [ ] Exchange rate caching
 - [ ] Domain events + transactional outbox
 - [ ] Batch transfers with background jobs
@@ -166,6 +166,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **Ownership (resource-based authorization):** a wallet has an `OwnerId` (a foreign key to `AspNetUsers`, unknown to the domain). Commands load the wallet and check `IsOwnedBy` before anything else, including the idempotency replay; reads filter by owner in the SQL. Someone else's wallet or transfer gets the same 404 as a missing one, so ids can't be probed. A transfer can go to anyone's wallet, and both sides can see it
 - **Idempotency:** money-moving requests require an `Idempotency-Key` header. The key is stored on the ledger entry with a unique index per wallet, in the same transaction as the money change. Same key and same request → the result is replayed and no money moves; same key, different request → 422. A unique-index race (two requests with the same key, or the same wallet name for one owner, at the same moment) returns 409, and the retry gets the replay
 - **Read committed snapshot isolation (RCSI)** on the database: reads use the last committed row version instead of waiting for locks, so a read can't deadlock with a concurrent update
+- **Exchange rates:** `IExchangeRateProvider` in Application, implemented in Infrastructure as a typed `HttpClient` for [Frankfurter](https://frankfurter.dev/) (ECB rates, published once per working day; no API key). An `ExchangeRate` keeps up to 8 decimals and the date the rate was published. Resilience is hand-written as `DelegatingHandler`s in the client's pipeline (no Polly), tuned for a user waiting on a transfer: retry (GET only, 2 retries with exponential backoff and jitter) → circuit breaker (opens after 5 failures in a row for 30s, then lets one trial call through) → 2s per try, with `HttpClient.Timeout` capping the whole call at 8s. The breaker's state is a keyed singleton, because the factory recycles handlers. When it gives up, the API returns 503 and same-currency transfers keep working
 - **Exceptions for broken business rules**, mapped to ProblemDetails (RFC 9457) in one place
 - **`TimeProvider`** for the current time, so time-dependent logic is testable
 - **Enums travel as text** in JSON (`"EUR"`, never `0`)

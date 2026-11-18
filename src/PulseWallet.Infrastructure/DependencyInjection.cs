@@ -2,11 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PulseWallet.Application.Abstractions;
+using PulseWallet.Application.ExchangeRates;
 using PulseWallet.Application.Transfers;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Domain.Ledger;
 using PulseWallet.Domain.Transfers;
 using PulseWallet.Domain.Wallets;
+using PulseWallet.Infrastructure.ExchangeRates;
+using PulseWallet.Infrastructure.Http;
 using PulseWallet.Infrastructure.Persistence;
 using PulseWallet.Infrastructure.Persistence.Queries;
 using PulseWallet.Infrastructure.Persistence.Repositories;
@@ -32,6 +35,42 @@ public static class DependencyInjection
         services.AddScoped<ITransferQueries, TransferQueries>();
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PulseWalletDbContext>());
 
+        services.AddExchangeRates(configuration);
+
         return services;
+    }
+
+    private static void AddExchangeRates(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Must end with '/': relative paths like "latest" replace the last segment of a base address without one,
+        // so "https://api.frankfurter.dev/v1" + "latest" would become "https://api.frankfurter.dev/latest".
+        string? baseUrl = configuration["ExchangeRates:Frankfurter:BaseUrl"];
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseAddress) || !baseAddress.AbsoluteUri.EndsWith('/'))
+        {
+            throw new InvalidOperationException("ExchangeRates:Frankfurter:BaseUrl must be an absolute URL ending with '/'.");
+        }
+
+        // One breaker per external service, shared by every request to it. Keyed, so a second HTTP client
+        // added later gets its own breaker instead of silently sharing this one.
+        const string clientKey = nameof(FrankfurterExchangeRateProvider);
+        services.AddKeyedSingleton<CircuitBreaker>(clientKey, (sp, _) =>
+            new CircuitBreaker(failureThreshold: 5, breakDuration: TimeSpan.FromSeconds(30), sp.GetRequiredService<TimeProvider>()));
+
+        // Typed client: registered as transient, while the factory pools and recycles the handler underneath.
+        // Never inject it into a singleton, or that singleton keeps one handler forever and misses DNS changes.
+        //
+        // A user waits on a transfer while this runs, so everything is tuned to fail fast:
+        // 2s per try, 2 retries with backoff, 8s in total (HttpClient.Timeout wraps all the handlers).
+        // Handlers run in the order they're added, each wrapping the next: retry → breaker → attempt timeout → network.
+        // The breaker sits inside the retry so it counts every single try, and a timed-out try counts as a failure.
+        services.AddHttpClient<IExchangeRateProvider, FrankfurterExchangeRateProvider>(client =>
+            {
+                client.BaseAddress = baseAddress;
+                client.Timeout = TimeSpan.FromSeconds(8);
+            })
+            .AddHttpMessageHandler(sp =>
+                new RetryHandler(maxRetries: 2, baseDelay: TimeSpan.FromMilliseconds(300), sp.GetRequiredService<TimeProvider>()))
+            .AddHttpMessageHandler(sp => new CircuitBreakerHandler(sp.GetRequiredKeyedService<CircuitBreaker>(clientKey)))
+            .AddHttpMessageHandler(() => new AttemptTimeoutHandler(TimeSpan.FromSeconds(2)));
     }
 }
