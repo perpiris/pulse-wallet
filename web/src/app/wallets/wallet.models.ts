@@ -27,6 +27,15 @@ export interface LedgerEntriesPage {
   nextCursor: string | null;
 }
 
+// One row of GET /api/wallets: the signed-in user's wallets, without their ledger entries.
+export interface WalletSummary {
+  id: string;
+  username: string;
+  currency: Currency;
+  balance: number;
+  createdAt: string;
+}
+
 export interface WalletDetails {
   id: string;
   username: string;

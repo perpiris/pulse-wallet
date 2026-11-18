@@ -7,6 +7,7 @@ import {
   LedgerEntriesQuery,
   MoneyMovementRequest,
   WalletDetails,
+  WalletSummary,
 } from './wallet.models';
 
 // @Service() (v22) is the short form of @Injectable({ providedIn: 'root' }): one shared instance
@@ -19,8 +20,13 @@ export class WalletsApi {
   private readonly http = inject(HttpClient);
 
   // HttpClient returns an Observable that's "cold": nothing is sent until something subscribes
-  // (here, the rxResource in WalletSearch). `get<WalletDetails>` only tells TypeScript the shape;
+  // (here, the rxResource in WalletPage). `get<WalletDetails>` only tells TypeScript the shape;
   // nothing checks at runtime that the JSON really looks like that.
+  // Only the signed-in user's wallets: the API decides whose from the token, there's no user id in the URL.
+  list(): Observable<WalletSummary[]> {
+    return this.http.get<WalletSummary[]>('/api/wallets');
+  }
+
   getById(id: string): Observable<WalletDetails> {
     return this.http.get<WalletDetails>(`/api/wallets/${id}`);
   }

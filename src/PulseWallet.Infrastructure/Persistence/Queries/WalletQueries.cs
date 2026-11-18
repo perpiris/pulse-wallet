@@ -44,6 +44,16 @@ internal sealed class WalletQueries : IWalletQueries
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    // Uses the index on OwnerId that the foreign key created. Oldest first, so a new wallet appears at the end.
+    public async Task<IReadOnlyList<WalletSummary>> ListOwnedAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Wallets
+            .Where(w => w.OwnerId == ownerId)
+            .OrderBy(w => w.CreatedAt)
+            .Select(w => new WalletSummary(w.Id, w.Username, w.Currency, w.Balance, w.CreatedAt))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<LedgerEntriesPage?> GetLedgerEntriesAsync(
         Guid walletId,
         Guid ownerId,

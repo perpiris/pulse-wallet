@@ -77,8 +77,8 @@ export class CreateWallet {
     this.submitError.set(undefined);
     try {
       const wallet = await firstValueFrom(this.walletsApi.create(field().value()));
-      // Navigate to the lookup page with ?id=..., which shows the new wallet's card.
-      await this.router.navigate(['/'], { queryParams: { id: wallet.id } });
+      // Straight to the new wallet's page.
+      await this.router.navigate(['/wallets', wallet.id]);
       return undefined;
     } catch (error) {
       const apiError = ApiError.of(error);

@@ -30,7 +30,7 @@ interface AmountModel {
 // Same rules as the domain's Money: positive, at most 2 decimals. Amounts are never rounded, only rejected.
 const AMOUNT = /^\d+(\.\d{1,2})?$/;
 
-// Opened with the CDK's Dialog service (see WalletSearch.openMoneyDialog), not placed in a template.
+// Opened with the CDK's Dialog service (see WalletPage.openMoneyDialog), not placed in a template.
 // The CDK gives it the dialog behaviour: an overlay with a backdrop, focus moved inside and trapped there,
 // Escape to close, focus returned to the button that opened it, role="dialog", and the rest of the page
 // hidden from screen readers (aria-hidden) while it's open.

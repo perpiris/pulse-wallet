@@ -7,6 +7,7 @@ using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
 using PulseWallet.Application.Wallets.GetWalletById;
 using PulseWallet.Application.Wallets.GetWalletLedgerEntries;
+using PulseWallet.Application.Wallets.ListMyWallets;
 using PulseWallet.Application.Wallets.TopUpWallet;
 using PulseWallet.Application.Wallets.WithdrawFromWallet;
 
@@ -19,6 +20,17 @@ namespace PulseWallet.Api.Controllers;
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public class WalletsController : ControllerBase
 {
+    // The signed-in user's own wallets. No paging: a person has a handful of wallets, not thousands.
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<WalletSummaryResponse>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListMyWallets(
+        [FromServices] ListMyWalletsHandler handler,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyList<WalletSummary> wallets = await handler.HandleAsync(User.GetUserId(), cancellationToken);
+        return Ok(wallets.Select(WalletSummaryResponse.From).ToList());
+    }
+
     // The error responses are produced by GlobalExceptionHandler, not here;
     // the attributes only tell the OpenAPI document (and Swagger) that they can happen.
     [HttpPost]

@@ -19,26 +19,53 @@
       <nav aria-label="Main" class="flex items-center gap-1 text-sm font-medium">
         <!--
           routerLinkActive adds the given classes while the link's route is the current one.
-          [routerLinkActiveOptions]="exactPath" stops "/" from matching every page (see app.ts).
+          [routerLinkActiveOptions]="exactPath" makes "/wallets" match only itself (see app.ts).
           ariaCurrentWhenActive="page" sets aria-current, so screen readers announce "current page".
         -->
-        <a
-          routerLink="/"
-          routerLinkActive="bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
-          [routerLinkActiveOptions]="exactPath"
-          ariaCurrentWhenActive="page"
-          class="rounded-lg px-3 py-2 text-slate-600 transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none dark:text-slate-400 dark:hover:text-white"
-        >
-          Look up
-        </a>
-        <a
-          routerLink="/wallets/new"
-          routerLinkActive="bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
-          ariaCurrentWhenActive="page"
-          class="rounded-lg px-3 py-2 text-slate-600 transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none dark:text-slate-400 dark:hover:text-white"
-        >
-          New wallet
-        </a>
+        @if (authStore.isSignedIn()) {
+          <a
+            routerLink="/wallets"
+            routerLinkActive="bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
+            [routerLinkActiveOptions]="exactPath"
+            ariaCurrentWhenActive="page"
+            class="rounded-lg px-3 py-2 text-slate-600 transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none dark:text-slate-400 dark:hover:text-white"
+          >
+            My wallets
+          </a>
+          <a
+            routerLink="/wallets/new"
+            routerLinkActive="bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
+            ariaCurrentWhenActive="page"
+            class="rounded-lg px-3 py-2 text-slate-600 transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none dark:text-slate-400 dark:hover:text-white"
+          >
+            New wallet
+          </a>
+          <!-- A button, not a link: signing out is an action, not a place to navigate to. -->
+          <button
+            type="button"
+            (click)="signOut()"
+            class="rounded-lg px-3 py-2 text-slate-600 transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none dark:text-slate-400 dark:hover:text-white"
+          >
+            Sign out
+          </button>
+        } @else {
+          <a
+            routerLink="/login"
+            routerLinkActive="bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
+            ariaCurrentWhenActive="page"
+            class="rounded-lg px-3 py-2 text-slate-600 transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none dark:text-slate-400 dark:hover:text-white"
+          >
+            Sign in
+          </a>
+          <a
+            routerLink="/register"
+            routerLinkActive="bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
+            ariaCurrentWhenActive="page"
+            class="rounded-lg px-3 py-2 text-slate-600 transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none dark:text-slate-400 dark:hover:text-white"
+          >
+            Register
+          </a>
+        }
       </nav>
       <app-theme-toggle />
     </div>

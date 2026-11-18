@@ -2,6 +2,7 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
+import { authInterceptor } from './core/auth/auth.interceptor';
 import { problemDetailsInterceptor } from './core/problem-details.interceptor';
 
 // App-wide providers: what AppModule's `imports` and `providers` used to hold.
@@ -20,6 +21,9 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     // withFetch(): HttpClient uses the browser's fetch() instead of the older XMLHttpRequest.
     // withInterceptors(): interceptors are plain functions now, not classes implementing HttpInterceptor.
-    provideHttpClient(withFetch(), withInterceptors([problemDetailsInterceptor])),
+    // Order matters: requests pass through them first to last, responses come back last to first.
+    // authInterceptor is last, so it sees the raw 401 first (to refresh and retry) before
+    // problemDetailsInterceptor turns whatever error is left into an ApiError.
+    provideHttpClient(withFetch(), withInterceptors([problemDetailsInterceptor, authInterceptor])),
   ],
 };

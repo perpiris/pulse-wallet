@@ -8,6 +8,8 @@ public interface IWalletQueries
     // query itself, so a read can never return someone else's wallet, and callers can't forget the check.
     Task<WalletDetails?> GetDetailsAsync(Guid walletId, Guid ownerId, int recentEntries, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<WalletSummary>> ListOwnedAsync(Guid ownerId, CancellationToken cancellationToken);
+
     Task<LedgerEntriesPage?> GetLedgerEntriesAsync(
         Guid walletId,
         Guid ownerId,

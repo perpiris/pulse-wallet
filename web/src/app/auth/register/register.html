@@ -1,0 +1,98 @@
+<section class="mx-auto max-w-md space-y-8">
+  <div>
+    <h1 class="text-3xl font-bold tracking-tight">Create an account</h1>
+    <p class="mt-2 text-slate-600 dark:text-slate-400">
+      Already have one?
+      <a
+        routerLink="/login"
+        class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+        >Sign in</a
+      >
+    </p>
+  </div>
+
+  <form
+    [formRoot]="registerForm"
+    class="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+  >
+    @if (submitError(); as error) {
+      <div
+        role="alert"
+        class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+      >
+        {{ error }}
+      </div>
+    }
+
+    <div>
+      <label for="email" class="block text-sm font-medium">Email</label>
+      <input
+        id="email"
+        type="email"
+        autocomplete="username"
+        [formField]="registerForm.email"
+        [attr.aria-invalid]="registerForm.email().touched() && registerForm.email().invalid()"
+        aria-describedby="email-errors"
+        class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 focus:outline-none aria-invalid:border-red-500 dark:border-slate-700 dark:bg-slate-950 dark:focus:border-indigo-400"
+      />
+      <div id="email-errors">
+        @if (registerForm.email().touched()) {
+          @for (error of registerForm.email().errors(); track $index) {
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error.message }}</p>
+          }
+        }
+      </div>
+    </div>
+
+    <div>
+      <label for="password" class="block text-sm font-medium">Password</label>
+      <!-- autocomplete="new-password": password managers offer to generate a strong one here. -->
+      <input
+        id="password"
+        type="password"
+        autocomplete="new-password"
+        [formField]="registerForm.password"
+        [attr.aria-invalid]="registerForm.password().touched() && registerForm.password().invalid()"
+        aria-describedby="password-errors"
+        class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 focus:outline-none aria-invalid:border-red-500 dark:border-slate-700 dark:bg-slate-950 dark:focus:border-indigo-400"
+      />
+      <div id="password-errors">
+        @if (registerForm.password().touched()) {
+          @for (error of registerForm.password().errors(); track $index) {
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error.message }}</p>
+          }
+        }
+      </div>
+    </div>
+
+    <div>
+      <label for="confirm-password" class="block text-sm font-medium">Repeat password</label>
+      <input
+        id="confirm-password"
+        type="password"
+        autocomplete="new-password"
+        [formField]="registerForm.confirmPassword"
+        [attr.aria-invalid]="
+          registerForm.confirmPassword().touched() && registerForm.confirmPassword().invalid()
+        "
+        aria-describedby="confirm-password-errors"
+        class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 focus:outline-none aria-invalid:border-red-500 dark:border-slate-700 dark:bg-slate-950 dark:focus:border-indigo-400"
+      />
+      <div id="confirm-password-errors">
+        @if (registerForm.confirmPassword().touched()) {
+          @for (error of registerForm.confirmPassword().errors(); track $index) {
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error.message }}</p>
+          }
+        }
+      </div>
+    </div>
+
+    <button
+      type="submit"
+      [disabled]="registerForm().submitting()"
+      class="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/30 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {{ registerForm().submitting() ? 'Creating account…' : 'Create account' }}
+    </button>
+  </form>
+</section>

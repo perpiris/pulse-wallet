@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { IsActiveMatchOptions, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthStore } from './core/auth/auth-store';
 import { ThemeToggle } from './core/theme-toggle/theme-toggle';
 
 // The root component: the page shell. The current route's component renders inside <router-outlet />.
@@ -13,12 +14,19 @@ import { ThemeToggle } from './core/theme-toggle/theme-toggle';
   templateUrl: './app.html',
 })
 export class App {
-  // `{ exact: true }` would also compare query params, so "/?id=..." wouldn't count as "/".
-  // Exact on the path only: "/" is active on the lookup page with or without ?id, and not on /wallets/new.
+  // The header shows different links signed in and signed out; it reads the store's signals directly.
+  protected readonly authStore = inject(AuthStore);
+
+  // Exact on the path only: "My wallets" (/wallets) isn't also active on /wallets/new or /wallets/{id}.
+  // `{ exact: true }` would do the same but also compare query params, which a link like ?returnUrl= would break.
   protected readonly exactPath: IsActiveMatchOptions = {
     paths: 'exact',
     queryParams: 'ignored',
     fragment: 'ignored',
     matrixParams: 'ignored',
   };
+
+  protected signOut(): void {
+    void this.authStore.signOut();
+  }
 }

@@ -19,7 +19,7 @@ try
         .AddApplication()
         .AddInfrastructure(builder.Configuration)
         .AddApi()
-        .AddIdentityAuthentication()
+        .AddIdentityAuthentication(builder.Configuration)
         .AddDatabaseHealthChecks(builder.Configuration);
 
     WebApplication app = builder.Build();

@@ -15,10 +15,13 @@ src/
     core/                 app-wide pieces used by every feature
       api-error.ts, problem-details.interceptor.ts   one error type for every failed request
       theme-store.ts, theme-toggle/                   light/dark theme (index.html sets it before Angular starts)
+      auth/               session store, token interceptor (adds the token, refreshes on 401), route guards
+    auth/                 login and register pages
     wallets/              one folder per feature
       wallets-api.ts      HTTP calls for wallets
       wallet.models.ts    response types, mirroring the API's C# records
-      wallet-search/      a page (routed): owns state, talks to the API
+      my-wallets/         a page (routed): the signed-in user's wallets
+      wallet-page/        a page (routed): one wallet, owns state, opens the top-up / withdraw dialog
       create-wallet/      a page (routed): a Signal Forms form
       wallet-history/     a page (routed): filters + paging
       ledger-entry-row/   one transaction row, shared by the card and the history page
@@ -30,29 +33,30 @@ Grouped by feature, not by kind: no top-level `components/`, `services/`, `model
 
 ## Angular 15–17 → 22 cheat sheet
 
-| Then                                                          | Now                                                                                             | Where it's used here                           |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `NgModule` with `declarations`                                | Standalone components (default, no flag): each lists what it uses in `imports`                  | every component                                |
-| `standalone: true`                                            | Leave it out, it's the default                                                                  |                                                |
-| `AppModule` + `bootstrapModule`                               | `bootstrapApplication(App, appConfig)`                                                          | `main.ts`, `app.config.ts`                     |
-| `HttpClientModule`, `RouterModule.forRoot()`                  | `provideHttpClient()`, `provideRouter()`                                                        | `app.config.ts`                                |
-| Lazy feature modules (`loadChildren` + `forChild`)            | `loadComponent` / `loadChildren` pointing at routes                                             | `app.routes.ts`                                |
-| `constructor(private x: X)`                                   | `private readonly x = inject(X)`                                                                | `wallets-api.ts`, `wallet-search.ts`           |
-| `@Injectable({ providedIn: 'root' })`                         | `@Service()`                                                                                    | `wallets-api.ts`                               |
-| Class interceptors + `HTTP_INTERCEPTORS`                      | Functions + `withInterceptors([...])`                                                           | `core/problem-details.interceptor.ts`          |
-| `@Input()` / `@Output()`                                      | `input()`, `input.required()`, `output()`, `model()`                                            | `wallet-card.ts`                               |
-| `@HostBinding('class')`                                       | `host: { class: '...' }` in `@Component`                                                        | `ledger-entry-row.ts`                          |
-| Fields + manual change detection, `BehaviorSubject` for state | `signal()`, `computed()`, `linkedSignal()`                                                      | `wallet-search.ts`                             |
-| `ActivatedRoute.queryParams.subscribe(...)`                   | `withComponentInputBinding()` + `input()` named like the param                                  | `wallet-search.ts` (`?id=`)                    |
-| `subscribe()` + loading flags + `takeUntil(destroy$)`         | `resource()` / `rxResource()` / `httpResource()`                                                | `wallet-search.ts`                             |
-| `*ngIf`, `*ngFor`, `*ngSwitch`                                | `@if`, `@for (…; track …)`, `@switch`                                                           | both templates                                 |
-| `[ngClass]`, `[ngStyle]`                                      | `[class.x]="…"`, `[style.x]="…"`                                                                | `wallet-search.html`                           |
-| Angular Material dialog / hand-rolled modals                  | Angular CDK `Dialog`: behaviour only (focus trap, Escape, backdrop, a11y), styled with Tailwind | `money-movement-dialog.ts`, `wallet-search.ts` |
-| zone.js decides when to re-render                             | Zoneless: signals, inputs and events trigger re-renders                                         | the whole app                                  |
-| `ChangeDetectionStrategy.OnPush` opt-in                       | OnPush is the default                                                                           |                                                |
-| `app.component.ts`, `AppComponent`                            | `app.ts`, `App` (same for services: no `.service` suffix)                                       | file names                                     |
-| Karma + Jasmine                                               | Vitest                                                                                          | `npm test`                                     |
-| Template-driven or reactive forms                             | Signal Forms (`@angular/forms/signals`): `form()`, a schema, `[formField]`, `[formRoot]`        | `create-wallet.ts`                             |
+| Then                                                          | Now                                                                                             | Where it's used here                                                   |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `NgModule` with `declarations`                                | Standalone components (default, no flag): each lists what it uses in `imports`                  | every component                                                        |
+| `standalone: true`                                            | Leave it out, it's the default                                                                  |                                                                        |
+| `AppModule` + `bootstrapModule`                               | `bootstrapApplication(App, appConfig)`                                                          | `main.ts`, `app.config.ts`                                             |
+| `HttpClientModule`, `RouterModule.forRoot()`                  | `provideHttpClient()`, `provideRouter()`                                                        | `app.config.ts`                                                        |
+| Lazy feature modules (`loadChildren` + `forChild`)            | `loadComponent` / `loadChildren` pointing at routes                                             | `app.routes.ts`                                                        |
+| `constructor(private x: X)`                                   | `private readonly x = inject(X)`                                                                | `wallets-api.ts`, `wallet-page.ts`                                     |
+| `@Injectable({ providedIn: 'root' })`                         | `@Service()`                                                                                    | `wallets-api.ts`                                                       |
+| Class interceptors + `HTTP_INTERCEPTORS`                      | Functions + `withInterceptors([...])`                                                           | `core/problem-details.interceptor.ts`, `core/auth/auth.interceptor.ts` |
+| `@Input()` / `@Output()`                                      | `input()`, `input.required()`, `output()`, `model()`                                            | `wallet-card.ts`                                                       |
+| `@HostBinding('class')`                                       | `host: { class: '...' }` in `@Component`                                                        | `ledger-entry-row.ts`                                                  |
+| Fields + manual change detection, `BehaviorSubject` for state | `signal()`, `computed()`, `linkedSignal()`                                                      | `core/auth/auth-store.ts`, `wallet-history.ts`                         |
+| `ActivatedRoute.paramMap.subscribe(...)`                      | `withComponentInputBinding()` + `input()` named like the param                                  | `wallet-page.ts` (`:id`), `login.ts` (`?returnUrl=`)                   |
+| Class guards implementing `CanActivate`                       | Functional guards (`CanActivateFn`) returning `true` or a redirect `UrlTree`                    | `core/auth/auth.guards.ts`                                             |
+| `subscribe()` + loading flags + `takeUntil(destroy$)`         | `resource()` / `rxResource()` / `httpResource()`                                                | `wallet-page.ts`, `my-wallets.ts`                                      |
+| `*ngIf`, `*ngFor`, `*ngSwitch`                                | `@if`, `@for (…; track …)`, `@switch`                                                           | both templates                                                         |
+| `[ngClass]`, `[ngStyle]`                                      | `[class.x]="…"`, `[style.x]="…"`                                                                | `wallet-history.html`                                                  |
+| Angular Material dialog / hand-rolled modals                  | Angular CDK `Dialog`: behaviour only (focus trap, Escape, backdrop, a11y), styled with Tailwind | `money-movement-dialog.ts`, `wallet-page.ts`                           |
+| zone.js decides when to re-render                             | Zoneless: signals, inputs and events trigger re-renders                                         | the whole app                                                          |
+| `ChangeDetectionStrategy.OnPush` opt-in                       | OnPush is the default                                                                           |                                                                        |
+| `app.component.ts`, `AppComponent`                            | `app.ts`, `App` (same for services: no `.service` suffix)                                       | file names                                                             |
+| Karma + Jasmine                                               | Vitest                                                                                          | `npm test`                                                             |
+| Template-driven or reactive forms                             | Signal Forms (`@angular/forms/signals`): `form()`, a schema, `[formField]`, `[formRoot]`        | `create-wallet.ts`                                                     |
 
 ## Tooling
 

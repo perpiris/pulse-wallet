@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using PulseWallet.Api.ErrorHandling;
 using PulseWallet.Infrastructure.Identity;
 using PulseWallet.Infrastructure.Persistence;
@@ -69,7 +70,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddIdentityAuthentication(this IServiceCollection services)
+    public static IServiceCollection AddIdentityAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         // Secure by default: an endpoint with no [Authorize] / [AllowAnonymous] of its own requires a signed-in
         // user, so a new endpoint that forgets [Authorize] fails closed (401) instead of being public.
@@ -82,13 +83,14 @@ public static class ServiceCollectionExtensions
         // Registers ASP.NET Core Identity (users, password hashing, lockout) plus the bearer token
         // authentication scheme that the /api/auth/login endpoint issues tokens for.
         // The tokens are ASP.NET Core's own format, protected by Data Protection: opaque to clients, not JWTs.
-        services.AddIdentityApiEndpoints<ApplicationUser>(options =>
-            {
-                // Length beats composition rules (NIST SP 800-63B); the default composition rules are kept too.
-                options.Password.RequiredLength = 12;
-                options.User.RequireUniqueEmail = true;
-            })
+        services.AddIdentityApiEndpoints<ApplicationUser>(options => options.User.RequireUniqueEmail = true)
             .AddEntityFrameworkStores<PulseWalletDbContext>();
+
+        // The password policy comes from configuration ("Identity:Password" in appsettings), so it can differ per
+        // environment without code: strict in appsettings.json, length-only in appsettings.Development.json.
+        // Bound onto IdentityOptions.Password: that's the object Identity reads; a separate
+        // Configure<PasswordOptions> would be registered but never used.
+        services.Configure<IdentityOptions>(options => configuration.GetSection("Identity:Password").Bind(options.Password));
 
         return services;
     }
