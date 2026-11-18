@@ -3,6 +3,50 @@
 ### Health
 GET {{baseUrl}}/health
 
+### Register (stores the email and password in {{email}} / {{password}} for the login below)
+< {%
+  client.global.set("email", "user" + Math.floor(Math.random() * 100000) + "@example.com");
+  client.global.set("password", "Correct-Horse-9");
+%}
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Log in (stores the bearer token in {{accessToken}} and the refresh token in {{refreshToken}})
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+  client.global.set("accessToken", response.body.accessToken);
+  client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Who am I (401 without a valid token)
+GET {{baseUrl}}/api/auth/manage/info
+Authorization: Bearer {{accessToken}}
+
+### Refresh the access token (stores the new pair)
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {%
+  client.global.set("accessToken", response.body.accessToken);
+  client.global.set("refreshToken", response.body.refreshToken);
+%}
+
 ### Create a wallet (stores the new wallet's id in {{walletId}} for the requests below)
 POST {{baseUrl}}/api/wallets
 Content-Type: application/json

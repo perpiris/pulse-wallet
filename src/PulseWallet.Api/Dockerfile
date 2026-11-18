@@ -7,7 +7,9 @@ WORKDIR /src
 
 # Copy only the files restore needs first. Docker caches this layer, so packages are only
 # restored again when a project file or package version changes, not on every code change.
-COPY Directory.Build.props Directory.Packages.props ./
+# .editorconfig too: the build treats analyzer warnings as errors, and the rule severities it sets
+# (CA1716 off, ...) must apply here exactly as they do locally and in CI.
+COPY .editorconfig Directory.Build.props Directory.Packages.props ./
 COPY src/PulseWallet.Domain/PulseWallet.Domain.csproj src/PulseWallet.Domain/
 COPY src/PulseWallet.Application/PulseWallet.Application.csproj src/PulseWallet.Application/
 COPY src/PulseWallet.Infrastructure/PulseWallet.Infrastructure.csproj src/PulseWallet.Infrastructure/

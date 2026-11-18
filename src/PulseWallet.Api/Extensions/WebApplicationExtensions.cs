@@ -1,3 +1,5 @@
+using PulseWallet.Infrastructure.Identity;
+
 namespace PulseWallet.Api.Extensions;
 
 public static class WebApplicationExtensions
@@ -13,6 +15,17 @@ public static class WebApplicationExtensions
         // Swagger UI only displays it, so the SwaggerUI package is enough (no SwaggerGen needed).
         app.MapOpenApi();
         app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "PulseWallet API v1")); // UI at /swagger
+
+        return app;
+    }
+
+    public static WebApplication MapAuthEndpoints(this WebApplication app)
+    {
+        // POST /api/auth/register, /login, /refresh, plus password reset and /manage/info.
+        // Minimal API endpoints that ship with ASP.NET Core Identity, under the same /api prefix as the controllers.
+        app.MapGroup("/api/auth")
+            .WithTags("Auth")
+            .MapIdentityApi<ApplicationUser>();
 
         return app;
     }

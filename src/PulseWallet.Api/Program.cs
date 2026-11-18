@@ -19,6 +19,7 @@ try
         .AddApplication()
         .AddInfrastructure(builder.Configuration)
         .AddApi()
+        .AddIdentityAuthentication()
         .AddDatabaseHealthChecks(builder.Configuration);
 
     WebApplication app = builder.Build();
@@ -27,8 +28,10 @@ try
     app.UseSerilogRequestLogging(); // outermost, so it logs the final status code (after errors are turned into 4xx/5xx)
     app.UseExceptionHandler();      // next, so it catches exceptions from everything after it
     app.UseApiDocumentation();
-    app.UseAuthorization();
+    app.UseAuthentication();       // reads the bearer token into HttpContext.User
+    app.UseAuthorization();        // then checks [Authorize] requirements against that user
     app.MapControllers();
+    app.MapAuthEndpoints();
     app.MapHealthChecks("/health");
 
     app.Run();

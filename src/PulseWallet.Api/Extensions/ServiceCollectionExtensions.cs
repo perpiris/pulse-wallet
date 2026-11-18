@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text.Json.Serialization;
 using PulseWallet.Api.ErrorHandling;
+using PulseWallet.Infrastructure.Identity;
+using PulseWallet.Infrastructure.Persistence;
 using Serilog;
 using Serilog.Formatting.Compact;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -62,6 +64,24 @@ public static class ServiceCollectionExtensions
         // Errors: every exception becomes a ProblemDetails response; GlobalExceptionHandler picks the status code.
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddIdentityAuthentication(this IServiceCollection services)
+    {
+        services.AddAuthorization();
+
+        // Registers ASP.NET Core Identity (users, password hashing, lockout) plus the bearer token
+        // authentication scheme that the /api/auth/login endpoint issues tokens for.
+        // The tokens are ASP.NET Core's own format, protected by Data Protection: opaque to clients, not JWTs.
+        services.AddIdentityApiEndpoints<ApplicationUser>(options =>
+            {
+                // Length beats composition rules (NIST SP 800-63B); the default composition rules are kept too.
+                options.Password.RequiredLength = 12;
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddEntityFrameworkStores<PulseWalletDbContext>();
 
         return services;
     }
