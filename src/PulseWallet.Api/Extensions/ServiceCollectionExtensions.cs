@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 using PulseWallet.Api.ErrorHandling;
 using Serilog;
@@ -29,6 +30,7 @@ public static class ServiceCollectionExtensions
                 // default, so {ProblemDetail} is added to say why a request failed. It is empty on every other line.
                 config.WriteTo.Console(
                     outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {ProblemDetail:l}{NewLine}{Exception}",
+                    formatProvider: CultureInfo.InvariantCulture,
                     theme: AnsiConsoleTheme.Code);
             }
             else

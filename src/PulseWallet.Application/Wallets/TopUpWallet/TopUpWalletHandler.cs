@@ -7,7 +7,7 @@ using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Application.Wallets.TopUpWallet;
 
-public sealed class TopUpWalletHandler
+public sealed partial class TopUpWalletHandler
 {
     private readonly ILedgerEntryRepository _ledgerEntryRepository;
     private readonly IWalletRepository _walletRepository;
@@ -46,8 +46,7 @@ public sealed class TopUpWalletHandler
                 throw new IdempotencyKeyReusedException(command.IdempotencyKey);
             }
 
-            _logger.LogInformation("Top-up with idempotency key {IdempotencyKey} already applied (entry {LedgerEntryId}), replaying",
-                command.IdempotencyKey, existing.Id);
+            LogTopUpReplayed(command.IdempotencyKey, existing.Id);
             return await GetDetailsAsync(command.WalletId, cancellationToken);
         }
 
@@ -63,8 +62,7 @@ public sealed class TopUpWalletHandler
         // One SaveChanges: the new balance and the ledger entry (with its key) are saved in the same transaction.
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Wallet {WalletId} topped up with {Amount} {Currency} (entry {LedgerEntryId})",
-            wallet.Id, command.Amount, command.Currency, entry.Id);
+        LogToppedUp(wallet.Id, command.Amount, command.Currency, entry.Id);
 
         return await GetDetailsAsync(wallet.Id, cancellationToken);
     }
@@ -74,4 +72,11 @@ public sealed class TopUpWalletHandler
         return await _walletQueries.GetDetailsAsync(walletId, WalletDetails.RecentEntriesCount, cancellationToken)
                ?? throw new WalletNotFoundException(walletId);
     }
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Top-up with idempotency key {IdempotencyKey} already applied (entry {LedgerEntryId}), replaying")]
+    private partial void LogTopUpReplayed(Guid idempotencyKey, Guid ledgerEntryId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Wallet {WalletId} topped up with {Amount} {Currency} (entry {LedgerEntryId})")]
+    private partial void LogToppedUp(Guid walletId, decimal amount, Currency currency, Guid ledgerEntryId);
 }

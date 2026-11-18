@@ -1,3 +1,4 @@
+using System.Globalization;
 using PulseWallet.Api.Extensions;
 using PulseWallet.Application;
 using PulseWallet.Infrastructure;
@@ -6,7 +7,7 @@ using Serilog;
 // Logs startup failures (missing connection string, bad configuration) before the real logger exists.
 // AddSerilog replaces it once the host is built.
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
+    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
     .CreateBootstrapLogger();
 
 try

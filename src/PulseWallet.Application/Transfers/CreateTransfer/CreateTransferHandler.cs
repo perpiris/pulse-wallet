@@ -9,7 +9,7 @@ using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Application.Transfers.CreateTransfer;
 
-public sealed class CreateTransferHandler
+public sealed partial class CreateTransferHandler
 {
     private readonly ITransferRepository _transferRepository;
     private readonly IWalletRepository _walletRepository;
@@ -51,8 +51,7 @@ public sealed class CreateTransferHandler
                 throw new IdempotencyKeyReusedException(command.IdempotencyKey);
             }
 
-            _logger.LogInformation("Transfer with idempotency key {IdempotencyKey} already applied ({TransferId}), replaying",
-                command.IdempotencyKey, existing.Id);
+            LogTransferReplayed(command.IdempotencyKey, existing.Id);
             return await GetDetailsAsync(existing.Id, cancellationToken);
         }
 
@@ -70,8 +69,7 @@ public sealed class CreateTransferHandler
         // A concurrent change to either wallet fails the row version check → 409, the client retries.
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Transfer {TransferId}: {Amount} {Currency} from wallet {SourceWalletId} to wallet {DestinationWalletId}",
-            execution.Transfer.Id, command.Amount, command.Currency, source.Id, destination.Id);
+        LogTransferCreated(execution.Transfer.Id, command.Amount, command.Currency, source.Id, destination.Id);
 
         return await GetDetailsAsync(execution.Transfer.Id, cancellationToken);
     }
@@ -87,4 +85,12 @@ public sealed class CreateTransferHandler
         return await _transferQueries.GetDetailsAsync(transferId, cancellationToken)
                ?? throw new TransferNotFoundException(transferId);
     }
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Transfer with idempotency key {IdempotencyKey} already applied ({TransferId}), replaying")]
+    private partial void LogTransferReplayed(Guid idempotencyKey, Guid transferId);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Transfer {TransferId}: {Amount} {Currency} from wallet {SourceWalletId} to wallet {DestinationWalletId}")]
+    private partial void LogTransferCreated(Guid transferId, decimal amount, Currency currency, Guid sourceWalletId, Guid destinationWalletId);
 }

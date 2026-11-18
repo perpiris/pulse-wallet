@@ -390,3 +390,20 @@ dotnet_naming_style.s_camelcase.required_suffix =
 dotnet_naming_style.s_camelcase.word_separator = 
 dotnet_naming_style.s_camelcase.capitalization = camel_case
 
+
+#### Code quality analyzer (CA) rule overrides ####
+# AnalysisMode=Recommended (Directory.Build.props) turns these rules on; tune single rules here.
+[*.cs]
+
+# Unused usings: a build warning, not just greyed out in the IDE (needs GenerateDocumentationFile).
+dotnet_diagnostic.IDE0005.severity = warning
+
+# CA1716: identifiers that clash with keywords of other .NET languages (e.g. VB's "Shared").
+# This is an application, not a library consumed from VB, so the rule adds nothing.
+dotnet_diagnostic.CA1716.severity = none
+
+# Test projects
+[tests/**.cs]
+
+# CA1707: test names use underscores (Method_Scenario_Result) on purpose.
+dotnet_diagnostic.CA1707.severity = none

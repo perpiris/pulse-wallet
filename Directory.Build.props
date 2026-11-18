@@ -15,6 +15,16 @@
          not just in the IDE. -->
     <AnalysisLevel>latest</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- "Recommended" turns on many more code quality (CA) rules as build warnings than the small
+         "Default" set: performance, reliability, globalization and design checks. Fine-tune single
+         rules in .editorconfig with dotnet_diagnostic.<ID>.severity. -->
+    <AnalysisMode>Recommended</AnalysisMode>
+
+    <!-- Needed for the compiler to report unused usings (IDE0005) during build, not only in the IDE.
+         CS1591 (missing XML comments on public members) is silenced: we don't want docs on everything. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
 </Project>

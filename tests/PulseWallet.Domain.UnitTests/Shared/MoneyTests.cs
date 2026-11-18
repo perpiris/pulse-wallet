@@ -5,7 +5,7 @@ namespace PulseWallet.Domain.UnitTests.Shared;
 
 public sealed class MoneyTests
 {
-    public static TheoryData<decimal> ValidAmounts =
+    public static readonly TheoryData<decimal> ValidAmounts =
     [
         0m,
         0.01m,
@@ -29,7 +29,7 @@ public sealed class MoneyTests
         Assert.Contains("Amount cannot be negative", exception.Message);
     }
 
-    public static TheoryData<decimal> AmountsWithMoreThanTwoDecimals =
+    public static readonly TheoryData<decimal> AmountsWithMoreThanTwoDecimals =
     [
         0.001m,
         10.555m

@@ -4,7 +4,7 @@ using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Application.Wallets.CreateWallet;
 
-public class CreateWalletHandler
+public partial class CreateWalletHandler
 {
     private readonly IWalletRepository _walletRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -38,10 +38,13 @@ public class CreateWalletHandler
         _walletRepository.Add(wallet);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Wallet {WalletId} created for {Username}", wallet.Id, wallet.Username);
+        LogWalletCreated(wallet.Id, wallet.Username);
 
         // Read back through the read side, so POST and GET return the same shape built the same way.
         return await _walletQueries.GetDetailsAsync(wallet.Id, WalletDetails.RecentEntriesCount, cancellationToken)
             ?? throw new InvalidOperationException($"Wallet '{wallet.Id}' was not found right after it was saved.");
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Wallet {WalletId} created for {Username}")]
+    private partial void LogWalletCreated(Guid walletId, string username);
 }

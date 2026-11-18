@@ -11,7 +11,7 @@ using Serilog;
 
 namespace PulseWallet.Api.ErrorHandling;
 
-public class GlobalExceptionHandler : IExceptionHandler
+public partial class GlobalExceptionHandler : IExceptionHandler
 {
     // SQL Server error numbers for a duplicate key in a unique index / unique constraint.
     private const int UniqueIndexViolation = 2601;
@@ -56,8 +56,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         // Only unexpected ones are logged with the full exception, and their details are never sent to the client.
         if (statusCode == StatusCodes.Status500InternalServerError)
         {
-            _logger.LogError(exception, "Unhandled exception while processing {Method} {Path}",
-                httpContext.Request.Method, httpContext.Request.Path);
+            LogUnhandledException(exception, httpContext.Request.Method, httpContext.Request.Path);
         }
 
         string detail = GetDetail(exception, statusCode);
@@ -100,4 +99,9 @@ public class GlobalExceptionHandler : IExceptionHandler
 
         return exception.Message;
     }
+
+    // [LoggerMessage] makes the source generator write the logging code at compile time: the message template is
+    // parsed once, values aren't boxed into an object[], and nothing is done at all when the level is disabled.
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception while processing {Method} {Path}")]
+    private partial void LogUnhandledException(Exception exception, string method, PathString path);
 }

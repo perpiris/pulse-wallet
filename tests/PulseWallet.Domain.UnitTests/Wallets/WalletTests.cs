@@ -67,7 +67,7 @@ public sealed class WalletTests
         Assert.Equal(username, wallet.Username);
     }
 
-    public static TheoryData<decimal> ValidTopUpAmounts =
+    public static readonly TheoryData<decimal> ValidTopUpAmounts =
     [
         50m,
         50.10m,
@@ -93,7 +93,7 @@ public sealed class WalletTests
         Assert.Null(entry.TransferId);
     }
 
-    public static TheoryData<decimal> ValidWithdrawalAmounts =
+    public static readonly TheoryData<decimal> ValidWithdrawalAmounts =
     [
         50m,
         50.10m,
@@ -154,7 +154,7 @@ public sealed class WalletTests
         Assert.Equal(0m, wallet.Balance);
     }
 
-    public static TheoryData<decimal> AmountsAboveBalanceOf100 =
+    public static readonly TheoryData<decimal> AmountsAboveBalanceOf100 =
     [
         100.01m,
         500m
