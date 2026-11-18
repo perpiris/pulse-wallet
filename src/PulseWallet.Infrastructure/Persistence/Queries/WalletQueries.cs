@@ -26,7 +26,7 @@ internal sealed class WalletQueries : IWalletQueries
             .Where(w => w.Id == walletId && w.OwnerId == ownerId)
             .Select(w => new WalletDetails(
                 w.Id,
-                w.Username,
+                w.FriendlyName,
                 w.Currency,
                 w.Balance,
                 w.CreatedAt,
@@ -39,7 +39,7 @@ internal sealed class WalletQueries : IWalletQueries
                     .OrderByDescending(e => e.CreatedAt)
                     .ThenByDescending(e => e.Id)
                     .Take(recentEntries)
-                    .Select(LedgerEntryDetails.Projection(walletId, _dbContext.Transfers, _dbContext.Wallets))
+                    .Select(LedgerEntryProjection.For(walletId, _dbContext.Transfers, _dbContext.Wallets, _dbContext.Users))
                     .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -50,7 +50,7 @@ internal sealed class WalletQueries : IWalletQueries
         return await _dbContext.Wallets
             .Where(w => w.OwnerId == ownerId)
             .OrderBy(w => w.CreatedAt)
-            .Select(w => new WalletSummary(w.Id, w.Username, w.Currency, w.Balance, w.CreatedAt))
+            .Select(w => new WalletSummary(w.Id, w.FriendlyName, w.Currency, w.Balance, w.CreatedAt))
             .ToListAsync(cancellationToken);
     }
 
@@ -101,7 +101,7 @@ internal sealed class WalletQueries : IWalletQueries
             .OrderByDescending(e => e.CreatedAt)
             .ThenByDescending(e => e.Id)
             .Take(filter.PageSize + 1)
-            .Select(LedgerEntryDetails.Projection(walletId, _dbContext.Transfers, _dbContext.Wallets))
+            .Select(LedgerEntryProjection.For(walletId, _dbContext.Transfers, _dbContext.Wallets, _dbContext.Users))
             .ToListAsync(cancellationToken);
 
         if (items.Count <= filter.PageSize)

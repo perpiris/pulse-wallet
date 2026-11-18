@@ -2,7 +2,7 @@
 
 public interface IWalletRepository
 {
-    Task<bool> UsernameExistsAsync(string username, CancellationToken cancellationToken);
+    Task<bool> FriendlyNameExistsAsync(Guid ownerId, string friendlyName, CancellationToken cancellationToken);
     Task<Wallet?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     void Add(Wallet wallet);
 }

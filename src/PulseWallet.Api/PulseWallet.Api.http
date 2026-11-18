@@ -54,7 +54,7 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "username": "user_{{$random.integer(10000, 99999)}}",
+  "friendlyName": "Wallet {{$random.integer(10000, 99999)}}",
   "currency": "EUR"
 }
 
@@ -96,7 +96,7 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "username": "user_{{$random.integer(10000, 99999)}}",
+  "friendlyName": "Wallet {{$random.integer(10000, 99999)}}",
   "currency": "EUR"
 }
 

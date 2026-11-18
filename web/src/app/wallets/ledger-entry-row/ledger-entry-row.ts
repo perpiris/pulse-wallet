@@ -39,8 +39,8 @@ function describe(entry: LedgerEntry): string {
     case 'Withdrawal':
       return 'Withdrawal';
     case 'TransferIn':
-      return `From @${entry.counterpartyUsername}`;
+      return `From ${entry.counterpartyEmail}`;
     case 'TransferOut':
-      return `To @${entry.counterpartyUsername}`;
+      return `To ${entry.counterpartyEmail}`;
   }
 }

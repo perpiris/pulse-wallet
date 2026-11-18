@@ -5,7 +5,7 @@ namespace PulseWallet.Api.Contracts;
 
 public record WalletSummaryResponse(
     Guid Id,
-    string Username,
+    string FriendlyName,
     Currency Currency,
     decimal Balance,
     DateTimeOffset CreatedAt)
@@ -14,7 +14,7 @@ public record WalletSummaryResponse(
     {
         return new WalletSummaryResponse(
             summary.Id,
-            summary.Username,
+            summary.FriendlyName,
             summary.Currency,
             summary.Balance,
             summary.CreatedAt);

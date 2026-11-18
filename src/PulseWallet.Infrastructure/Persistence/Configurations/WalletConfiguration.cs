@@ -17,19 +17,18 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
 
         // A real foreign key to the Identity users table, configured here so the domain stays unaware of it.
         // Restrict: deleting a user who still owns wallets fails instead of deleting their money's history.
-        // The FK also gets an index, which every "wallets of this user" lookup uses.
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(w => w.OwnerId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.Property(w => w.Username)
+        builder.Property(w => w.FriendlyName)
             .IsRequired()
-            .HasMaxLength(Wallet.UsernameMaxLength);
+            .HasMaxLength(Wallet.FriendlyNameMaxLength);
 
-        // The real guarantee against duplicate usernames: even if two requests pass the
-        // "does it exist?" check at the same moment, the database rejects the second insert.
-        builder.HasIndex(w => w.Username)
+        // Unique per owner: the real guarantee, even if two requests pass the "does it exist?" check at the same moment.
+        // OwnerId first, so the same index also serves "all wallets of this user" (it replaces the FK's own index).
+        builder.HasIndex(w => new { w.OwnerId, w.FriendlyName })
             .IsUnique();
 
         // Stored as text ("EUR"), not as the enum's number, so the data stays readable

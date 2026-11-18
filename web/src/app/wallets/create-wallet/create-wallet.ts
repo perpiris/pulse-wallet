@@ -5,10 +5,9 @@ import {
   FormField,
   FormRoot,
   maxLength,
-  minLength,
-  pattern,
   required,
   TreeValidationResult,
+  validate,
 } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -16,11 +15,9 @@ import { ApiError } from '../../core/api-error';
 import { CreateWalletRequest, Currency } from '../wallet.models';
 import { WalletsApi } from '../wallets-api';
 
-// Same rules as Wallet.Create in the domain. The API stays the authority (it checks again);
-// these only give instant feedback instead of a round trip.
-const USERNAME_MIN_LENGTH = 3;
-const USERNAME_MAX_LENGTH = 20;
-const USERNAME_CHARACTERS = /^[a-zA-Z0-9_]*$/;
+// Same rules as Wallet.Create in the domain. The API stays the authority (it checks again, and also rejects
+// control characters, which a text input can't produce anyway); these only give instant feedback.
+const FRIENDLY_NAME_MAX_LENGTH = 40;
 
 @Component({
   selector: 'app-create-wallet',
@@ -38,23 +35,23 @@ export class CreateWallet {
   // That signal is the single source of truth; typing in an input writes straight into it.
   // Compared to reactive forms: no FormGroup/FormControl objects, no valueChanges Observables,
   // and the model is fully typed (walletForm.currency can only hold a Currency).
-  private readonly model = signal<CreateWalletRequest>({ username: '', currency: 'EUR' });
+  private readonly model = signal<CreateWalletRequest>({ friendlyName: '', currency: 'EUR' });
 
   // form(model, schema, options) returns a FieldTree: an object with the same shape as the model,
-  // where each field is a function returning its state: walletForm.username().errors(), .touched(), .value() ...
+  // where each field is a function returning its state: walletForm.friendlyName().errors(), .touched(), .value() ...
   protected readonly walletForm = form(
     this.model,
     // The schema: validation rules, declared once per field instead of in the template.
     (path) => {
-      required(path.username, { message: 'Choose a username.' });
-      minLength(path.username, USERNAME_MIN_LENGTH, {
-        message: `At least ${USERNAME_MIN_LENGTH} characters.`,
-      });
-      maxLength(path.username, USERNAME_MAX_LENGTH, {
-        message: `At most ${USERNAME_MAX_LENGTH} characters.`,
-      });
-      pattern(path.username, USERNAME_CHARACTERS, {
-        message: 'Only letters, digits and underscores.',
+      required(path.friendlyName, { message: 'Give the wallet a name.' });
+      // required() accepts "   "; the API trims and would reject it, so say so here already.
+      validate(path.friendlyName, ({ value }) =>
+        value() !== '' && value().trim() === ''
+          ? { kind: 'blank', message: 'Give the wallet a name.' }
+          : undefined,
+      );
+      maxLength(path.friendlyName, FRIENDLY_NAME_MAX_LENGTH, {
+        message: `At most ${FRIENDLY_NAME_MAX_LENGTH} characters.`,
       });
     },
     {
@@ -83,9 +80,9 @@ export class CreateWallet {
     } catch (error) {
       const apiError = ApiError.of(error);
       // Returned errors are attached to the form like validation errors: this one shows under the
-      // username input and clears as soon as the username changes. `submitting()` resets either way.
+      // name input and clears as soon as the name changes. `submitting()` resets either way.
       if (apiError.status === 409) {
-        return { kind: 'server', fieldTree: field.username, message: apiError.detail };
+        return { kind: 'server', fieldTree: field.friendlyName, message: apiError.detail };
       }
       this.submitError.set(apiError.detail);
       return undefined;

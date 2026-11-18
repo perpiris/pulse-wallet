@@ -12,9 +12,13 @@ public class WalletRepository : IWalletRepository
         _dbContext = dbContext;
     }
 
-    public async Task<bool> UsernameExistsAsync(string username, CancellationToken cancellationToken)
+    // Compared in SQL, so with the database's case-insensitive collation: "Savings" and "savings" count as the same,
+    // exactly like the unique index that backs this check.
+    public async Task<bool> FriendlyNameExistsAsync(Guid ownerId, string friendlyName, CancellationToken cancellationToken)
     {
-        return await _dbContext.Wallets.AnyAsync(x => x.Username == username, cancellationToken);
+        return await _dbContext.Wallets.AnyAsync(
+            w => w.OwnerId == ownerId && w.FriendlyName == friendlyName,
+            cancellationToken);
     }
 
     public async Task<Wallet?> GetByIdAsync(Guid id, CancellationToken cancellationToken)

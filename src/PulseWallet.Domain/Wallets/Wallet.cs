@@ -6,15 +6,16 @@ namespace PulseWallet.Domain.Wallets;
 
 public sealed class Wallet
 {
-    public const int UsernameMinLength = 3;
-    public const int UsernameMaxLength = 20;
+    public const int FriendlyNameMaxLength = 40;
 
     public Guid Id { get; private set; }
 
     // The id of the user who owns the wallet. Just an id: the domain doesn't know about sign-in accounts.
     public Guid OwnerId { get; private set; }
 
-    public string Username { get; private set; } = null!;
+    // The owner's own label for the wallet ("Savings", "Holiday fund 2027"), kept as typed. Unique per owner,
+    // not globally: that's enforced by the database (OwnerId, FriendlyName index), since it spans wallets.
+    public string FriendlyName { get; private set; } = null!;
     public Currency Currency { get; private set; }
     public decimal Balance { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
@@ -23,28 +24,28 @@ public sealed class Wallet
     {
     }
 
-    public static Wallet Create(Guid ownerId, string username, Currency currency, DateTimeOffset now)
+    public static Wallet Create(Guid ownerId, string friendlyName, Currency currency, DateTimeOffset now)
     {
         if (ownerId == Guid.Empty)
         {
             throw new DomainException("A wallet must have an owner.");
         }
 
-        if (string.IsNullOrWhiteSpace(username))
+        if (string.IsNullOrWhiteSpace(friendlyName))
         {
-            throw new DomainException("Username cannot be null or empty");
+            throw new DomainException("A wallet needs a friendly name.");
         }
 
-        string normalizedUsername = username.Trim().ToLowerInvariant();
-        if (!normalizedUsername.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '_'))
+        string trimmedName = friendlyName.Trim();
+        if (trimmedName.Length > FriendlyNameMaxLength)
         {
-            throw new DomainException("Username cannot contain special characters");
+            throw new DomainException($"A friendly name can be at most {FriendlyNameMaxLength} characters long.");
         }
 
-        if (normalizedUsername.Length is < UsernameMinLength or > UsernameMaxLength)
+        // Free text, but no control characters (newlines, tabs, ...): the name is shown in lists and on one line.
+        if (trimmedName.Any(char.IsControl))
         {
-            throw new DomainException(
-                $"Username must be between {UsernameMinLength} and {UsernameMaxLength} characters long.");
+            throw new DomainException("A friendly name cannot contain control characters.");
         }
 
         if (!Enum.IsDefined(currency))
@@ -56,7 +57,7 @@ public sealed class Wallet
         {
             Id = Guid.CreateVersion7(),
             OwnerId = ownerId,
-            Username = normalizedUsername,
+            FriendlyName = trimmedName,
             Currency = currency,
             Balance = 0,
             CreatedAt = now

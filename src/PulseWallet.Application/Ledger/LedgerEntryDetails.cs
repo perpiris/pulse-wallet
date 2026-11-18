@@ -1,12 +1,12 @@
-using System.Linq.Expressions;
 using PulseWallet.Domain.Ledger;
 using PulseWallet.Domain.Shared;
-using PulseWallet.Domain.Transfers;
-using PulseWallet.Domain.Wallets;
 
 namespace PulseWallet.Application.Ledger;
 
 // Money is flattened into Amount + Currency: the read model is plain data, not a domain object.
+// CounterpartyEmail: for a transfer, the email of the user who owns the other wallet (the other wallet's
+// friendly name is that user's private label, so it isn't shown); null for top-ups and withdrawals.
+// How it's filled from the database lives in Infrastructure (LedgerEntryProjection), next to the user table.
 public record LedgerEntryDetails(
     Guid Id,
     LedgerEntryType Type,
@@ -14,28 +14,4 @@ public record LedgerEntryDetails(
     Currency Currency,
     DateTimeOffset CreatedAt,
     Guid? TransferId,
-    string? CounterpartyUsername)
-{
-    // The counterparty is the other wallet of the transfer, seen from walletId; null for top-ups and withdrawals.
-    public static Expression<Func<LedgerEntry, LedgerEntryDetails>> Projection(
-        Guid walletId,
-        IQueryable<Transfer> transfers,
-        IQueryable<Wallet> wallets)
-    {
-        return e => new LedgerEntryDetails(
-            e.Id,
-            e.Type,
-            e.Amount.Amount,
-            e.Amount.Currency,
-            e.CreatedAt,
-            e.TransferId,
-            transfers
-                .Where(t => t.Id == e.TransferId)
-                .Join(
-                    wallets,
-                    t => t.SourceWalletId == walletId ? t.DestinationWalletId : t.SourceWalletId,
-                    w => w.Id,
-                    (t, w) => w.Username)
-                .FirstOrDefault());
-    }
-}
+    string? CounterpartyEmail);

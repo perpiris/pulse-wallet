@@ -4,11 +4,7 @@
   <header class="bg-linear-to-br from-indigo-600 to-violet-700 p-6 text-white">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <!--
-          &#64; is an escaped "@". A plain @ in a template starts a control flow block (@if, @for),
-          so a literal one has to be written as &#64; (or {{ '@' }}).
-        -->
-        <h2 class="text-lg font-semibold">&#64;{{ wallet().username }}</h2>
+        <h2 class="truncate text-lg font-semibold">{{ wallet().friendlyName }}</h2>
         <p class="truncate font-mono text-xs text-indigo-100">{{ wallet().id }}</p>
       </div>
       <span class="shrink-0 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium">

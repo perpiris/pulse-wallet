@@ -11,12 +11,12 @@ public sealed class WalletTests
     private static readonly Guid OwnerId = Guid.CreateVersion7();
 
     [Fact]
-    public void Create_WithValidUsername_ReturnsEmptyWalletWithNormalizedUsername()
+    public void Create_WithValidFriendlyName_ReturnsEmptyWalletWithTrimmedName()
     {
-        Wallet wallet = Wallet.Create(OwnerId, "  Alice_01 ", Currency.EUR, Now);
+        Wallet wallet = Wallet.Create(OwnerId, "  Holiday fund 2027! ", Currency.EUR, Now);
 
         Assert.NotEqual(Guid.Empty, wallet.Id);
-        Assert.Equal("alice_01", wallet.Username);
+        Assert.Equal("Holiday fund 2027!", wallet.FriendlyName);
         Assert.Equal(Currency.EUR, wallet.Currency);
         Assert.Equal(0m, wallet.Balance);
         Assert.Equal(Now, wallet.CreatedAt);
@@ -41,22 +41,21 @@ public sealed class WalletTests
     }
 
     [Theory]
-    [InlineData("alice_1!")]
-    [InlineData("alicé")]
-    public void Create_WithInvalidUsernameChar_ThrowsDomainException(string username)
+    [InlineData("Rent\nmoney")]
+    [InlineData("Rent\tmoney")]
+    public void Create_WithControlCharacterInFriendlyName_ThrowsDomainException(string friendlyName)
     {
-        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, username, Currency.EUR, Now));
-        Assert.Contains("Username cannot contain special characters", exception.Message);
+        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, friendlyName, Currency.EUR, Now));
+        Assert.Contains("control characters", exception.Message);
     }
 
-    [Theory]
-    [InlineData("al")]
-    [InlineData("alicealicealicealicealicealicealicealicealicealicealice")]
-    [InlineData("  al  ")]
-    public void Create_WithOurOfRangeUsernameLength_ThrowsDomainException(string username)
+    [Fact]
+    public void Create_WithTooLongFriendlyName_ThrowsDomainException()
     {
-        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, username, Currency.EUR, Now));
-        Assert.Contains("Username must be between", exception.Message);
+        string friendlyName = new string('a', Wallet.FriendlyNameMaxLength + 1);
+
+        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, friendlyName, Currency.EUR, Now));
+        Assert.Contains("at most", exception.Message);
     }
 
     [Fact]
@@ -70,20 +69,20 @@ public sealed class WalletTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Create_WithMissingUsername_ThrowsDomainException(string? username)
+    public void Create_WithMissingFriendlyName_ThrowsDomainException(string? friendlyName)
     {
-        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, username!, Currency.EUR, Now));
-        Assert.Contains("Username cannot be null or empty", exception.Message);
+        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, friendlyName!, Currency.EUR, Now));
+        Assert.Contains("needs a friendly name", exception.Message);
     }
 
     [Theory]
-    [InlineData("abc")]
-    [InlineData("abcdefghijklmnopqrst")]
-    public void Create_WithUsernameAtLengthLimit_Succeeds(string username)
+    [InlineData("A")]
+    [InlineData("This name is exactly forty characters!!!")]
+    public void Create_WithFriendlyNameAtLengthLimit_Succeeds(string friendlyName)
     {
-        Wallet wallet = Wallet.Create(OwnerId, username, Currency.EUR, Now);
+        Wallet wallet = Wallet.Create(OwnerId, friendlyName, Currency.EUR, Now);
 
-        Assert.Equal(username, wallet.Username);
+        Assert.Equal(friendlyName, wallet.FriendlyName);
     }
 
     public static readonly TheoryData<decimal> ValidTopUpAmounts =

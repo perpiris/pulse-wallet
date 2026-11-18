@@ -3,7 +3,7 @@
   {{ isTopUp ? 'Top up' : 'Withdraw' }}
 </h2>
 <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-  &#64;{{ data.wallet.username }} · balance
+  {{ data.wallet.friendlyName }} · balance
   <span class="font-semibold text-slate-900 tabular-nums dark:text-white">
     {{ data.wallet.balance | number: '1.2-2' }} {{ data.wallet.currency }}
   </span>

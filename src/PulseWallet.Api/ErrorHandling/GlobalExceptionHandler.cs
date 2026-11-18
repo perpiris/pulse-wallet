@@ -45,7 +45,7 @@ public partial class GlobalExceptionHandler : IExceptionHandler
             DomainException => (StatusCodes.Status400BadRequest, "Invalid request"),
             WalletNotFoundException => (StatusCodes.Status404NotFound, "Wallet not found"),
             TransferNotFoundException => (StatusCodes.Status404NotFound, "Transfer not found"),
-            UsernameAlreadyTakenException => (StatusCodes.Status409Conflict, "Username already taken"),
+            FriendlyNameAlreadyUsedException => (StatusCodes.Status409Conflict, "Friendly name already used"),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Concurrent update"),
             DbUpdateException { InnerException: SqlException { Number: UniqueIndexViolation or UniqueConstraintViolation or DeadlockVictim } }
                 => (StatusCodes.Status409Conflict, "Concurrent update"),
@@ -85,7 +85,7 @@ public partial class GlobalExceptionHandler : IExceptionHandler
     private static string GetDetail(Exception exception, int statusCode)
     {
         // Both mean "another request changed the same data at the same moment": the row version didn't match,
-        // or a unique index (idempotency key, username) was claimed first. A retry then sees the winner's result.
+        // or a unique index (idempotency key, friendly name) was claimed first. A retry then sees the winner's result.
         if (exception is DbUpdateConcurrencyException || (statusCode == StatusCodes.Status409Conflict && exception is DbUpdateException))
         {
             // EF's own message talks about rows and columns; the client needs to know it can simply retry.

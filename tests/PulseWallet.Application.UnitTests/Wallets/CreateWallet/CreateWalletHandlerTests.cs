@@ -32,12 +32,12 @@ public sealed class CreateWalletHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithFreeUsername_SavesWalletAndReturnsItsDetails()
+    public async Task HandleAsync_WithUnusedFriendlyName_SavesWalletAndReturnsItsDetails()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        CreateWalletCommand command = new CreateWalletCommand(OwnerId, "Alice", Currency.EUR);
+        CreateWalletCommand command = new CreateWalletCommand(OwnerId, " Savings ", Currency.EUR);
 
-        _walletRepository.UsernameExistsAsync("alice", cancellationToken).Returns(false);
+        _walletRepository.FriendlyNameExistsAsync(OwnerId, "Savings", cancellationToken).Returns(false);
 
         Wallet? added = null;
         _walletRepository.Add(Arg.Do<Wallet>(wallet => added = wallet));
@@ -46,12 +46,12 @@ public sealed class CreateWalletHandlerTests
         // so the assertion on result.Id checks that the handler read back the wallet it just saved.
         _walletQueries
             .GetDetailsAsync(Arg.Any<Guid>(), OwnerId, WalletDetails.RecentEntriesCount, cancellationToken)
-            .Returns(call => new WalletDetails(call.ArgAt<Guid>(0), "alice", Currency.EUR, 0m, Now, []));
+            .Returns(call => new WalletDetails(call.ArgAt<Guid>(0), "Savings", Currency.EUR, 0m, Now, []));
 
         WalletDetails result = await _handler.HandleAsync(command, cancellationToken);
 
         Assert.NotNull(added);
-        Assert.Equal("alice", added.Username);
+        Assert.Equal("Savings", added.FriendlyName);
         Assert.Equal(OwnerId, added.OwnerId);
         Assert.Equal(Now, added.CreatedAt);
         await _unitOfWork.Received(1).SaveChangesAsync(cancellationToken);

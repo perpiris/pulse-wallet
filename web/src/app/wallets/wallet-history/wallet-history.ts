@@ -30,7 +30,7 @@ export class WalletHistory {
   // `required`: the route can't match without an id, so it's always there.
   readonly id = input.required<string>();
 
-  // For the header (username, balance). A separate resource from the entries: it doesn't reload when filters change.
+  // For the header (name, balance). A separate resource from the entries: it doesn't reload when filters change.
   protected readonly wallet = rxResource({
     params: () => this.id(),
     stream: ({ params }) => this.walletsApi.getById(params),

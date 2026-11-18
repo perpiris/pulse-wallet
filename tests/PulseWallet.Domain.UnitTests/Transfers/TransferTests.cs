@@ -158,9 +158,9 @@ public sealed class TransferTests
         return Transfer.Execute(source, destination, Money.Create(amount, Currency.EUR), Guid.NewGuid(), Now).Transfer;
     }
 
-    private static Wallet CreateWalletWithBalance(string username, decimal balance, Currency currency = Currency.EUR)
+    private static Wallet CreateWalletWithBalance(string friendlyName, decimal balance, Currency currency = Currency.EUR)
     {
-        Wallet wallet = Wallet.Create(OwnerId, username, currency, Now);
+        Wallet wallet = Wallet.Create(OwnerId, friendlyName, currency, Now);
         if (balance > 0)
         {
             wallet.TopUp(Money.Create(balance, currency), Guid.NewGuid(), Now);

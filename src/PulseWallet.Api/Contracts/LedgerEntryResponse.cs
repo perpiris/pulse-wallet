@@ -11,7 +11,7 @@ public record LedgerEntryResponse(
     Currency Currency,
     DateTimeOffset CreatedAt,
     Guid? TransferId,
-    string? CounterpartyUsername)
+    string? CounterpartyEmail)
 {
     public static LedgerEntryResponse From(LedgerEntryDetails details)
     {
@@ -22,6 +22,6 @@ public record LedgerEntryResponse(
             details.Currency,
             details.CreatedAt,
             details.TransferId,
-            details.CounterpartyUsername);
+            details.CounterpartyEmail);
     }
 }

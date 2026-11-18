@@ -16,7 +16,8 @@ export interface LedgerEntry {
   // JSON has no date type: DateTimeOffset arrives as an ISO 8601 string. The date pipe formats it as is.
   createdAt: string;
   transferId: string | null;
-  counterpartyUsername: string | null;
+  // For transfers: the email of the user who owns the other wallet. Null for top-ups and withdrawals.
+  counterpartyEmail: string | null;
 }
 
 export type LedgerEntryDirection = 'Incoming' | 'Outgoing';
@@ -30,7 +31,7 @@ export interface LedgerEntriesPage {
 // One row of GET /api/wallets: the signed-in user's wallets, without their ledger entries.
 export interface WalletSummary {
   id: string;
-  username: string;
+  friendlyName: string;
   currency: Currency;
   balance: number;
   createdAt: string;
@@ -38,7 +39,7 @@ export interface WalletSummary {
 
 export interface WalletDetails {
   id: string;
-  username: string;
+  friendlyName: string;
   currency: Currency;
   balance: number;
   createdAt: string;
@@ -48,7 +49,7 @@ export interface WalletDetails {
 // Request bodies. Same rule as the C# side: requests and responses are separate types,
 // even when they overlap, so one can change without the other.
 export interface CreateWalletRequest {
-  username: string;
+  friendlyName: string;
   currency: Currency;
 }
 

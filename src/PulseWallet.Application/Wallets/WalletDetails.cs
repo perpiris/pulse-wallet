@@ -5,7 +5,7 @@ namespace PulseWallet.Application.Wallets;
 
 public record WalletDetails(
     Guid Id,
-    string Username,
+    string FriendlyName,
     Currency Currency,
     decimal Balance,
     DateTimeOffset CreatedAt,

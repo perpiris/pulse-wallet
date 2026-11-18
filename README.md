@@ -3,14 +3,14 @@
 [![CI](https://github.com/perpiris/pulse-wallet/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/perpiris/pulse-wallet/actions/workflows/ci.yml)
 [![.NET](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 
-A digital wallet API built with .NET 10 and domain-driven design. Users create a wallet with a unique username and a base currency, top it up, withdraw from it and send money to other wallets, with currency conversion when the wallets use different currencies.
+A digital wallet API built with .NET 10 and domain-driven design. Users sign in, create wallets with a name of their choice and a base currency, top them up, withdraw from it and send money to other wallets, with currency conversion when the wallets use different currencies.
 
 PulseWallet is a learning project: the aim is a realistic fintech backend that shows clean architecture, DDD and production-minded practices, built step by step, with an Angular web client on top.
 
 ## Goals
 
 **Features**
-- Create a wallet with a unique username and a base currency
+- Create wallets with a friendly name (unique per user) and a base currency
 - Top up and withdraw
 - Transfer money between wallets
 - Convert currencies using live exchange rates when wallets use different currencies
@@ -69,7 +69,7 @@ Secondary for this project, possible later:
 - [x] Docker Compose with SQL Server
 
 **Wallets**
-- [x] `Wallet` entity with username rules
+- [x] `Wallet` entity with a friendly name (free text, 1–40 characters, unique per owner)
 - [x] EF Core mapping for wallets
 - [x] Create wallet: save to the database, return 201 with `Location`
 - [x] Get wallet by ID (200 / 404)
@@ -82,7 +82,7 @@ Secondary for this project, possible later:
 - [x] `LedgerEntry` model and migration (`AddLedgerEntries`)
 - [x] Wallet details include the 10 latest ledger entries
 - [x] Top up and withdraw (`POST /api/wallets/{id}/top-ups`, `/withdrawals`; 422 on insufficient funds)
-- [x] Wallet history (`GET /api/wallets/{id}/ledger-entries`: date range, incoming/outgoing, keyset paging; transfer rows show the other wallet's username)
+- [x] Wallet history (`GET /api/wallets/{id}/ledger-entries`: date range, incoming/outgoing, keyset paging; transfer rows show the email of the other wallet's owner)
 - [x] Instant transfers between wallets in the same currency (`POST /api/transfers`, `GET /api/transfers/{id}`)
 - [ ] Exchange rates client
 - [ ] Transfers between wallets in different currencies
@@ -164,7 +164,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **Optimistic concurrency:** a `rowversion` on `Wallets` (an EF shadow property, so the domain stays clean). A conflicting save returns 409 and the client retries
 - **Authentication:** ASP.NET Core Identity in the same database (`IdentityDbContext`, Guid keys); `/api/auth` endpoints from `MapIdentityApi` issue bearer + refresh tokens. A **fallback policy** requires a signed-in user on every endpoint that doesn't opt out with `AllowAnonymous`, so a forgotten `[Authorize]` fails closed
 - **Ownership (resource-based authorization):** a wallet has an `OwnerId` (a foreign key to `AspNetUsers`, unknown to the domain). Commands load the wallet and check `IsOwnedBy` before anything else, including the idempotency replay; reads filter by owner in the SQL. Someone else's wallet or transfer gets the same 404 as a missing one, so ids can't be probed. A transfer can go to anyone's wallet, and both sides can see it
-- **Idempotency:** money-moving requests require an `Idempotency-Key` header. The key is stored on the ledger entry with a unique index per wallet, in the same transaction as the money change. Same key and same request → the result is replayed and no money moves; same key, different request → 422. A unique-index race (two requests with the same key, or the same username, at the same moment) returns 409, and the retry gets the replay
+- **Idempotency:** money-moving requests require an `Idempotency-Key` header. The key is stored on the ledger entry with a unique index per wallet, in the same transaction as the money change. Same key and same request → the result is replayed and no money moves; same key, different request → 422. A unique-index race (two requests with the same key, or the same wallet name for one owner, at the same moment) returns 409, and the retry gets the replay
 - **Read committed snapshot isolation (RCSI)** on the database: reads use the last committed row version instead of waiting for locks, so a read can't deadlock with a concurrent update
 - **Exceptions for broken business rules**, mapped to ProblemDetails (RFC 9457) in one place
 - **`TimeProvider`** for the current time, so time-dependent logic is testable
