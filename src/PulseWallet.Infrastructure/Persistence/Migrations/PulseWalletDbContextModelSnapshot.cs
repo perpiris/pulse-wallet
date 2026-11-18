@@ -219,6 +219,13 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("IdempotencyKey")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("Rate")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<DateOnly?>("RateDate")
+                        .HasColumnType("date");
+
                     b.Property<Guid>("SourceWalletId")
                         .HasColumnType("uniqueidentifier");
 
@@ -236,6 +243,22 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                                 .HasMaxLength(3)
                                 .HasColumnType("nvarchar(3)")
                                 .HasColumnName("Currency");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "ReceivedAmount", "PulseWallet.Domain.Transfers.Transfer.ReceivedAmount#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("decimal(18,2)")
+                                .HasColumnName("ReceivedAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("nvarchar(3)")
+                                .HasColumnName("ReceivedCurrency");
                         });
 
                     b.HasKey("Id");

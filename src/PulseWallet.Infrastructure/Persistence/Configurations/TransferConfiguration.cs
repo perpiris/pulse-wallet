@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using PulseWallet.Domain.Shared;
 using PulseWallet.Domain.Transfers;
 using PulseWallet.Domain.Wallets;
 
@@ -36,6 +37,22 @@ internal sealed class TransferConfiguration : IEntityTypeConfiguration<Transfer>
                 .HasConversion<string>()
                 .HasMaxLength(3);
         });
+
+        builder.ComplexProperty(t => t.ReceivedAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("ReceivedAmount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("ReceivedCurrency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        // Rates need more precision than money: 7.4744 DKK per EUR, 0.00006 for weak currencies.
+        builder.Property(t => t.Rate)
+            .HasPrecision(18, ExchangeRate.MaxDecimals);
 
         builder.Property(t => t.CreatedAt)
             .IsRequired();

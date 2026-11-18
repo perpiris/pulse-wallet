@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using PulseWallet.Application.Abstractions;
+using PulseWallet.Application.ExchangeRates;
 using PulseWallet.Application.Ledger;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Domain.Ledger;
@@ -16,6 +17,7 @@ public sealed partial class CreateTransferHandler
     private readonly ILedgerEntryRepository _ledgerEntryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITransferQueries _transferQueries;
+    private readonly IExchangeRateProvider _exchangeRateProvider;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<CreateTransferHandler> _logger;
 
@@ -25,6 +27,7 @@ public sealed partial class CreateTransferHandler
         ILedgerEntryRepository ledgerEntryRepository,
         IUnitOfWork unitOfWork,
         ITransferQueries transferQueries,
+        IExchangeRateProvider exchangeRateProvider,
         TimeProvider timeProvider,
         ILogger<CreateTransferHandler> logger)
     {
@@ -33,6 +36,7 @@ public sealed partial class CreateTransferHandler
         _ledgerEntryRepository = ledgerEntryRepository;
         _unitOfWork = unitOfWork;
         _transferQueries = transferQueries;
+        _exchangeRateProvider = exchangeRateProvider;
         _timeProvider = timeProvider;
         _logger = logger;
     }
@@ -61,8 +65,15 @@ public sealed partial class CreateTransferHandler
 
         Wallet destination = await GetWalletAsync(command.DestinationWalletId, cancellationToken);
 
+        // Fetched before anything is written: with retries the call can take seconds, and no transaction is open yet
+        // (SaveChanges opens the only one), so nothing is locked meanwhile. If a wallet changes during the wait,
+        // its row version catches it on save → 409. Provider down → 503, and same-currency transfers never get here.
+        ExchangeRate? rate = source.Currency == destination.Currency
+            ? null
+            : await _exchangeRateProvider.GetLatestRateAsync(source.Currency, destination.Currency, cancellationToken);
+
         TransferExecution execution = Transfer.Execute(
-            source, destination, amount, command.IdempotencyKey, _timeProvider.GetUtcNow());
+            source, destination, amount, rate, command.IdempotencyKey, _timeProvider.GetUtcNow());
 
         _transferRepository.Add(execution.Transfer);
         _ledgerEntryRepository.Add(execution.Debit);
@@ -72,9 +83,12 @@ public sealed partial class CreateTransferHandler
         // A concurrent change to either wallet fails the row version check → 409, the client retries.
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        LogTransferCreated(execution.Transfer.Id, command.Amount, command.Currency, source.Id, destination.Id);
+        Transfer transfer = execution.Transfer;
+        LogTransferCreated(
+            transfer.Id, transfer.Amount.Amount, transfer.Amount.Currency,
+            transfer.ReceivedAmount.Amount, transfer.ReceivedAmount.Currency, transfer.Rate, source.Id, destination.Id);
 
-        return await GetDetailsAsync(execution.Transfer.Id, command.UserId, cancellationToken);
+        return await GetDetailsAsync(transfer.Id, command.UserId, cancellationToken);
     }
 
     private async Task<Wallet> GetWalletAsync(Guid walletId, CancellationToken cancellationToken)
@@ -94,6 +108,15 @@ public sealed partial class CreateTransferHandler
     private partial void LogTransferReplayed(Guid idempotencyKey, Guid transferId);
 
     [LoggerMessage(Level = LogLevel.Information,
-        Message = "Transfer {TransferId}: {Amount} {Currency} from wallet {SourceWalletId} to wallet {DestinationWalletId}")]
-    private partial void LogTransferCreated(Guid transferId, decimal amount, Currency currency, Guid sourceWalletId, Guid destinationWalletId);
+        Message = "Transfer {TransferId}: {Amount} {Currency} from wallet {SourceWalletId}, {ReceivedAmount} {ReceivedCurrency} " +
+                  "to wallet {DestinationWalletId} (rate {Rate})")]
+    private partial void LogTransferCreated(
+        Guid transferId,
+        decimal amount,
+        Currency currency,
+        decimal receivedAmount,
+        Currency receivedCurrency,
+        decimal? rate,
+        Guid sourceWalletId,
+        Guid destinationWalletId);
 }

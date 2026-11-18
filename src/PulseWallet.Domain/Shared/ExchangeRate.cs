@@ -46,4 +46,17 @@ public sealed record ExchangeRate
 
         return new ExchangeRate(from, to, rate, date);
     }
+
+    // Rounds down (toward zero) to cents: the receiver never gets more than the amount is worth,
+    // so a conversion can't create money. The sub-cent remainder is what a bank would book as FX income.
+    public Money Convert(Money amount)
+    {
+        if (amount.Currency != From)
+        {
+            throw new DomainException($"This rate converts {From}, but the amount is in {amount.Currency}.");
+        }
+
+        decimal converted = decimal.Round(amount.Amount * Rate, 2, MidpointRounding.ToZero);
+        return Money.Create(converted, To);
+    }
 }

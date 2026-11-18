@@ -8,4 +8,8 @@ public record TransferDetails(
     Guid DestinationWalletId,
     decimal Amount,
     Currency Currency,
+    decimal ReceivedAmount,
+    Currency ReceivedCurrency,
+    decimal? Rate,
+    DateOnly? RateDate,
     DateTimeOffset CreatedAt);

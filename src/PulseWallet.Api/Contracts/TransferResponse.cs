@@ -9,6 +9,10 @@ public record TransferResponse(
     Guid DestinationWalletId,
     decimal Amount,
     Currency Currency,
+    decimal ReceivedAmount,
+    Currency ReceivedCurrency,
+    decimal? Rate,
+    DateOnly? RateDate,
     DateTimeOffset CreatedAt)
 {
     public static TransferResponse From(TransferDetails details)
@@ -19,6 +23,10 @@ public record TransferResponse(
             details.DestinationWalletId,
             details.Amount,
             details.Currency,
+            details.ReceivedAmount,
+            details.ReceivedCurrency,
+            details.Rate,
+            details.RateDate,
             details.CreatedAt);
     }
 }

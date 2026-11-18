@@ -85,7 +85,7 @@ Secondary for this project, possible later:
 - [x] Wallet history (`GET /api/wallets/{id}/ledger-entries`: date range, incoming/outgoing, keyset paging; transfer rows show the email of the other wallet's owner)
 - [x] Instant transfers between wallets in the same currency (`POST /api/transfers`, `GET /api/transfers/{id}`)
 - [x] Exchange rates client (Frankfurter, ECB rates; typed `HttpClient`)
-- [ ] Transfers between wallets in different currencies
+- [x] Transfers between wallets in different currencies (rate fetched before saving; amount converted and rounded down; rate, rate date and received amount stored on the transfer)
 
 **Testing**
 - [x] Test projects (xUnit v3 + NSubstitute) with a first example each
@@ -157,7 +157,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **Request → Command in, Result → Response out:** the HTTP contract is kept separate from the use cases
 - **Repository per aggregate + unit of work** for writes; reads go through query services (`IWalletQueries`) that project straight into read models (CQRS-lite)
 - **Ledger:** every balance change is an append-only `LedgerEntry` with a positive amount; its type gives the direction. Entries are never deleted, and only `Wallet` can create them (the factory methods are `internal`), so an entry never exists without its balance change
-- **Transfers:** one endpoint (`POST /api/transfers`) for every kind of transfer; cross-currency and future-dated transfers will extend the same request. A transfer is a `Transfer` row plus two ledger entries (`TransferOut` on the sender, `TransferIn` on the receiver) that point to it. `Transfer.Execute` changes both wallets in one transaction, on purpose: an instant transfer must never be half done. The idempotency key lives on the `Transfer`, unique per sender. A deadlock (SQL error 1205) returns 409 like any other conflict
+- **Transfers:** one endpoint (`POST /api/transfers`) for every kind of transfer; future-dated transfers will extend the same request. In a cross-currency transfer, `amount` + `currency` is what the sender pays; the receiver gets it converted at the latest rate, **rounded down** to cents, so a conversion never creates money. The rate is fetched before anything is saved, so no transaction is open while the provider is called, and the transfer stores the rate, the day it was published and the received amount. A transfer is a `Transfer` row plus two ledger entries (`TransferOut` on the sender, `TransferIn` on the receiver) that point to it. `Transfer.Execute` changes both wallets in one transaction, on purpose: an instant transfer must never be half done. The idempotency key lives on the `Transfer`, unique per sender. A deadlock (SQL error 1205) returns 409 like any other conflict
 - **Wallet history** uses keyset paging: an opaque `nextCursor` (the last entry's `CreatedAt` + `Id`) instead of page numbers, so new entries never shift the pages
 - **`Money` value object** for amounts that travel with their currency; amounts someone enters are rejected, never rounded
 - **Top-up and withdraw are separate operations** (`Wallet.TopUp`, `Wallet.Withdraw`): the wallet changes its balance and returns the ledger entry, and both are saved in one transaction

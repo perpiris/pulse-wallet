@@ -9,6 +9,7 @@ namespace PulseWallet.Domain.UnitTests.Transfers;
 public sealed class TransferTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 12, 10, 0, 0, TimeSpan.Zero);
+    private static readonly DateOnly RateDate = new(2026, 11, 11);
     private static readonly Guid OwnerId = Guid.CreateVersion7();
 
     [Fact]
@@ -19,7 +20,7 @@ public sealed class TransferTests
         Money amount = Money.Create(30m, Currency.EUR);
         Guid idempotencyKey = Guid.NewGuid();
 
-        TransferExecution execution = Transfer.Execute(source, destination, amount, idempotencyKey, Now);
+        TransferExecution execution = Transfer.Execute(source, destination, amount, null, idempotencyKey, Now);
 
         Assert.Equal(70m, source.Balance);
         Assert.Equal(50m, destination.Balance);
@@ -29,6 +30,9 @@ public sealed class TransferTests
         Assert.Equal(source.Id, transfer.SourceWalletId);
         Assert.Equal(destination.Id, transfer.DestinationWalletId);
         Assert.Equal(amount, transfer.Amount);
+        Assert.Equal(amount, transfer.ReceivedAmount);
+        Assert.Null(transfer.Rate);
+        Assert.Null(transfer.RateDate);
         Assert.Equal(idempotencyKey, transfer.IdempotencyKey);
         Assert.Equal(Now, transfer.CreatedAt);
 
@@ -52,7 +56,7 @@ public sealed class TransferTests
         Wallet source = CreateWalletWithBalance("alice", 100m);
         Wallet destination = CreateWalletWithBalance("bob", 0m);
 
-        Transfer.Execute(source, destination, Money.Create(100m, Currency.EUR), Guid.NewGuid(), Now);
+        Transfer.Execute(source, destination, Money.Create(100m, Currency.EUR), null, Guid.NewGuid(), Now);
 
         Assert.Equal(0m, source.Balance);
         Assert.Equal(100m, destination.Balance);
@@ -64,22 +68,74 @@ public sealed class TransferTests
         Wallet wallet = CreateWalletWithBalance("alice", 100m);
 
         DomainException exception = Assert.Throws<DomainException>(
-            () => Transfer.Execute(wallet, wallet, Money.Create(30m, Currency.EUR), Guid.NewGuid(), Now));
+            () => Transfer.Execute(wallet, wallet, Money.Create(30m, Currency.EUR), null, Guid.NewGuid(), Now));
 
         Assert.Contains("cannot transfer to itself", exception.Message);
         Assert.Equal(100m, wallet.Balance);
     }
 
     [Fact]
-    public void Execute_BetweenDifferentCurrencies_ThrowsDomainExceptionAndKeepsBothBalances()
+    public void Execute_BetweenDifferentCurrencies_ConvertsRoundingDownAndStoresTheRate()
+    {
+        Wallet source = CreateWalletWithBalance("alice", 100m);
+        Wallet destination = CreateWalletWithBalance("bob", 20m, Currency.USD);
+        ExchangeRate rate = ExchangeRate.Create(Currency.EUR, Currency.USD, 1.09687m, RateDate);
+        Money amount = Money.Create(10m, Currency.EUR);
+
+        TransferExecution execution = Transfer.Execute(source, destination, amount, rate, Guid.NewGuid(), Now);
+
+        // 10 × 1.09687 = 10.9687 → 10.96, not 10.97.
+        Money received = Money.Create(10.96m, Currency.USD);
+        Assert.Equal(90m, source.Balance);
+        Assert.Equal(30.96m, destination.Balance);
+        Assert.Equal(amount, execution.Transfer.Amount);
+        Assert.Equal(received, execution.Transfer.ReceivedAmount);
+        Assert.Equal(1.09687m, execution.Transfer.Rate);
+        Assert.Equal(RateDate, execution.Transfer.RateDate);
+        Assert.Equal(amount, execution.Debit.Amount);
+        Assert.Equal(received, execution.Credit.Amount);
+    }
+
+    [Fact]
+    public void Execute_BetweenDifferentCurrenciesWithoutRate_ThrowsDomainExceptionAndKeepsBothBalances()
     {
         Wallet source = CreateWalletWithBalance("alice", 100m);
         Wallet destination = CreateWalletWithBalance("bob", 20m, Currency.USD);
 
         DomainException exception = Assert.Throws<DomainException>(
-            () => Transfer.Execute(source, destination, Money.Create(30m, Currency.EUR), Guid.NewGuid(), Now));
+            () => Transfer.Execute(source, destination, Money.Create(30m, Currency.EUR), null, Guid.NewGuid(), Now));
 
-        Assert.Contains("Cross-currency transfers are not supported", exception.Message);
+        Assert.Contains("needs an exchange rate", exception.Message);
+        Assert.Equal(100m, source.Balance);
+        Assert.Equal(20m, destination.Balance);
+    }
+
+    [Fact]
+    public void Execute_WithRateForAnotherPair_ThrowsDomainExceptionAndKeepsBothBalances()
+    {
+        Wallet source = CreateWalletWithBalance("alice", 100m);
+        Wallet destination = CreateWalletWithBalance("bob", 20m, Currency.USD);
+        ExchangeRate rate = ExchangeRate.Create(Currency.EUR, Currency.DKK, 7.4744m, RateDate);
+
+        DomainException exception = Assert.Throws<DomainException>(
+            () => Transfer.Execute(source, destination, Money.Create(30m, Currency.EUR), rate, Guid.NewGuid(), Now));
+
+        Assert.Contains("rate is for EUR/DKK", exception.Message);
+        Assert.Equal(100m, source.Balance);
+        Assert.Equal(20m, destination.Balance);
+    }
+
+    [Fact]
+    public void Execute_AmountThatConvertsToZero_ThrowsDomainExceptionAndKeepsBothBalances()
+    {
+        Wallet source = CreateWalletWithBalance("alice", 100m);
+        Wallet destination = CreateWalletWithBalance("bob", 20m, Currency.USD);
+        ExchangeRate rate = ExchangeRate.Create(Currency.EUR, Currency.USD, 0.5m, RateDate);
+
+        DomainException exception = Assert.Throws<DomainException>(
+            () => Transfer.Execute(source, destination, Money.Create(0.01m, Currency.EUR), rate, Guid.NewGuid(), Now));
+
+        Assert.Contains("too small to convert", exception.Message);
         Assert.Equal(100m, source.Balance);
         Assert.Equal(20m, destination.Balance);
     }
@@ -91,7 +147,7 @@ public sealed class TransferTests
         Wallet destination = CreateWalletWithBalance("bob", 20m);
 
         DomainException exception = Assert.Throws<DomainException>(
-            () => Transfer.Execute(source, destination, Money.Create(30m, Currency.USD), Guid.NewGuid(), Now));
+            () => Transfer.Execute(source, destination, Money.Create(30m, Currency.USD), null, Guid.NewGuid(), Now));
 
         Assert.Contains("Wallet currency is EUR, but the amount is in USD", exception.Message);
         Assert.Equal(100m, source.Balance);
@@ -105,7 +161,7 @@ public sealed class TransferTests
         Wallet destination = CreateWalletWithBalance("bob", 20m);
 
         Assert.Throws<InsufficientFundsException>(
-            () => Transfer.Execute(source, destination, Money.Create(100.01m, Currency.EUR), Guid.NewGuid(), Now));
+            () => Transfer.Execute(source, destination, Money.Create(100.01m, Currency.EUR), null, Guid.NewGuid(), Now));
 
         Assert.Equal(100m, source.Balance);
         Assert.Equal(20m, destination.Balance);
@@ -118,7 +174,7 @@ public sealed class TransferTests
         Wallet destination = CreateWalletWithBalance("bob", 20m);
 
         DomainException exception = Assert.Throws<DomainException>(
-            () => Transfer.Execute(source, destination, Money.Create(0m, Currency.EUR), Guid.NewGuid(), Now));
+            () => Transfer.Execute(source, destination, Money.Create(0m, Currency.EUR), null, Guid.NewGuid(), Now));
 
         Assert.Contains("Amount must be greater than zero", exception.Message);
         Assert.Equal(100m, source.Balance);
@@ -155,7 +211,7 @@ public sealed class TransferTests
     private static Transfer ExecuteTransfer(Wallet destination, decimal amount)
     {
         Wallet source = CreateWalletWithBalance("alice", 100m);
-        return Transfer.Execute(source, destination, Money.Create(amount, Currency.EUR), Guid.NewGuid(), Now).Transfer;
+        return Transfer.Execute(source, destination, Money.Create(amount, Currency.EUR), null, Guid.NewGuid(), Now).Transfer;
     }
 
     private static Wallet CreateWalletWithBalance(string friendlyName, decimal balance, Currency currency = Currency.EUR)

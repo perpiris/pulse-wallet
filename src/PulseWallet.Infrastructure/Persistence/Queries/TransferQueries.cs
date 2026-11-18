@@ -25,6 +25,10 @@ internal sealed class TransferQueries : ITransferQueries
                 t.DestinationWalletId,
                 t.Amount.Amount,
                 t.Amount.Currency,
+                t.ReceivedAmount.Amount,
+                t.ReceivedAmount.Currency,
+                t.Rate,
+                t.RateDate,
                 t.CreatedAt))
             .FirstOrDefaultAsync(cancellationToken);
     }
