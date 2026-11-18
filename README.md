@@ -75,7 +75,7 @@ Secondary for this project, possible later:
 - [x] Get wallet by ID (200 / 404)
 - [x] Error handling with ProblemDetails (400 / 404 / 409 / 422 / 500)
 - [x] Database migrations
-- [ ] Apply migrations automatically at startup (Development only)
+- [x] Apply migrations automatically at startup (Development only; production will run them from the pipeline)
 
 **Transactions**
 - [x] `Money` value object (amount + currency, no negatives, at most 2 decimals)
@@ -103,7 +103,8 @@ Secondary for this project, possible later:
 - [ ] Batch transfers with background jobs
 - [ ] Rate limiting
 - [ ] OpenTelemetry tracing
-- [ ] Authentication
+- [x] Authentication: ASP.NET Core Identity, register / login / refresh at `/api/auth` (bearer tokens)
+- [ ] Authorization: users only see and use the wallets they own
 
 **Frontend**
 - [x] Choose a framework: Angular
@@ -170,7 +171,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 
 ## Tech stack
 
-.NET 10 · ASP.NET Core (controllers) · EF Core 10 · SQL Server 2025 · Serilog · Swagger UI · Docker Compose · xUnit v3 · NSubstitute · GitHub Actions
+.NET 10 · ASP.NET Core (controllers) · ASP.NET Core Identity · EF Core 10 · SQL Server 2025 · Serilog · Swagger UI · Docker Compose · xUnit v3 · NSubstitute · GitHub Actions
 
 Angular 22 · TypeScript · Tailwind CSS 4 · Vitest · ESLint · Prettier · nginx
 
@@ -186,11 +187,8 @@ Angular 22 · TypeScript · Tailwind CSS 4 · Vitest · ESLint · Prettier · ng
    ```bash
    docker compose up --build -d
    ```
-3. Create the tables (needed once per new database, until migrations are applied automatically at startup; uses the user secret from "Running from the IDE" below):
-   ```bash
-   dotnet ef database update --project src/PulseWallet.Infrastructure --startup-project src/PulseWallet.Api
-   ```
-4. Open:
+   The API creates the database and applies pending migrations when it starts (Development only), so there's no manual step.
+3. Open:
    - Web app: http://localhost:4200
    - Swagger UI: http://localhost:5147/swagger
    - Health check: http://localhost:5147/health

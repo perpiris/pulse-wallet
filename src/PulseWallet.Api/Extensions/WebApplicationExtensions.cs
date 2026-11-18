@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using PulseWallet.Infrastructure.Identity;
+using PulseWallet.Infrastructure.Persistence;
 
 namespace PulseWallet.Api.Extensions;
 
@@ -28,5 +30,21 @@ public static class WebApplicationExtensions
             .MapIdentityApi<ApplicationUser>();
 
         return app;
+    }
+
+    // Development only: a fresh `docker compose up` gets a working database with no manual step.
+    // Production never migrates at startup: several instances would race, and the app's database user
+    // shouldn't have DDL rights. There, the pipeline applies migrations before the deploy (#11).
+    public static async Task ApplyMigrationsInDevelopmentAsync(this WebApplication app)
+    {
+        if (!app.Environment.IsDevelopment())
+        {
+            return;
+        }
+
+        // The DbContext is scoped and there's no request yet, so a scope is created just for this.
+        await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
+        PulseWalletDbContext dbContext = scope.ServiceProvider.GetRequiredService<PulseWalletDbContext>();
+        await dbContext.Database.MigrateAsync();
     }
 }

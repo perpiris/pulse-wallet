@@ -24,6 +24,8 @@ try
 
     WebApplication app = builder.Build();
 
+    await app.ApplyMigrationsInDevelopmentAsync();
+
     // The middleware pipeline stays here, in order: the order matters, so it should be visible at a glance.
     app.UseSerilogRequestLogging(); // outermost, so it logs the final status code (after errors are turned into 4xx/5xx)
     app.UseExceptionHandler();      // next, so it catches exceptions from everything after it
