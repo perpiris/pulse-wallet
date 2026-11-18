@@ -47,11 +47,19 @@
       <!-- [wallet]="..." passes a value into the child's input() of the same name. -->
       <app-wallet-card [wallet]="wallet.value()" />
       <!-- The actions live here, not in the card: the card only displays, this page decides what you can do. -->
-      <div class="mt-4 grid grid-cols-2 gap-3">
+      <div class="mt-4 grid grid-cols-3 gap-3">
+        <button
+          type="button"
+          (click)="openSendDialog()"
+          [disabled]="preparingSend()"
+          class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/30 focus-visible:outline-none disabled:opacity-60"
+        >
+          <span aria-hidden="true">→</span> Send
+        </button>
         <button
           type="button"
           (click)="openMoneyDialog('top-up')"
-          class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/30 focus-visible:outline-none"
+          class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold shadow-sm transition hover:bg-slate-50 focus-visible:ring-4 focus-visible:ring-indigo-500/30 focus-visible:outline-none dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
           <span aria-hidden="true">+</span> Top up
         </button>

@@ -5,7 +5,29 @@
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
         <h2 class="truncate text-lg font-semibold">{{ wallet().friendlyName }}</h2>
-        <p class="truncate font-mono text-xs text-indigo-100">{{ wallet().id }}</p>
+        <div class="flex items-center gap-2">
+          <p class="truncate font-mono text-xs text-indigo-100">{{ wallet().id }}</p>
+          <!-- The visible text changes to "Copied" (or "Couldn't copy"); the live region announces it to screen readers. -->
+          <button
+            type="button"
+            (click)="copyId()"
+            class="shrink-0 rounded-md bg-white/15 px-2 py-0.5 text-xs font-medium transition hover:bg-white/25 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+          >
+            <span aria-live="polite">
+              @switch (copyState()) {
+                @case ('copied') {
+                  Copied
+                }
+                @case ('failed') {
+                  Couldn't copy
+                }
+                @default {
+                  Copy ID
+                }
+              }
+            </span>
+          </button>
+        </div>
       </div>
       <span class="shrink-0 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium">
         {{ wallet().currency }}

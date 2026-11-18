@@ -1,18 +1,10 @@
 import { DecimalPipe } from '@angular/common';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, inject, signal } from '@angular/core';
-import {
-  FieldTree,
-  form,
-  FormField,
-  FormRoot,
-  pattern,
-  required,
-  TreeValidationResult,
-  validate,
-} from '@angular/forms/signals';
+import { FieldTree, form, FormField, FormRoot, TreeValidationResult } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 import { ApiError } from '../../core/api-error';
+import { amountRules } from '../amount-rules';
 import { WalletDetails } from '../wallet.models';
 import { WalletsApi } from '../wallets-api';
 
@@ -26,9 +18,6 @@ export interface MoneyMovementDialogData {
 interface AmountModel {
   amount: string;
 }
-
-// Same rules as the domain's Money: positive, at most 2 decimals. Amounts are never rounded, only rejected.
-const AMOUNT = /^\d+(\.\d{1,2})?$/;
 
 // Opened with the CDK's Dialog service (see WalletPage.openMoneyDialog), not placed in a template.
 // The CDK gives it the dialog behaviour: an overlay with a backdrop, focus moved inside and trapped there,
@@ -54,24 +43,12 @@ export class MoneyMovementDialog {
 
   protected readonly isTopUp = this.data.kind === 'top-up';
 
-  // A string, not a number: <input type="number"> has quirks (scrolling changes it, "1e3" is valid,
-  // the decimal separator follows the browser's locale). Text + a pattern gives exact control,
-  // and the string is converted only when it's sent.
   private readonly model = signal<AmountModel>({ amount: '' });
 
   protected readonly amountForm = form(
     this.model,
-    (path) => {
-      required(path.amount, { message: 'Enter an amount.' });
-      pattern(path.amount, AMOUNT, {
-        message: 'Use a number with at most 2 decimals, e.g. 25.50.',
-      });
-      validate(path.amount, ({ value }) =>
-        AMOUNT.test(value()) && Number(value()) === 0
-          ? { kind: 'positive', message: 'The amount must be more than 0.' }
-          : undefined,
-      );
-    },
+    // amountRules(...) adds the shared amount validators (amount-rules.ts) to this form's schema.
+    (path) => amountRules(path.amount),
     { submission: { action: (field) => this.submit(field) } },
   );
 
