@@ -16,10 +16,14 @@ internal sealed class WalletQueries : IWalletQueries
 
     // One SQL statement. A projection selects only the needed columns and never tracks anything,
     // so no AsNoTracking() is needed.
-    public async Task<WalletDetails?> GetDetailsAsync(Guid walletId, int recentEntries, CancellationToken cancellationToken)
+    public async Task<WalletDetails?> GetDetailsAsync(
+        Guid walletId,
+        Guid ownerId,
+        int recentEntries,
+        CancellationToken cancellationToken)
     {
         return await _dbContext.Wallets
-            .Where(w => w.Id == walletId)
+            .Where(w => w.Id == walletId && w.OwnerId == ownerId)
             .Select(w => new WalletDetails(
                 w.Id,
                 w.Username,
@@ -42,10 +46,11 @@ internal sealed class WalletQueries : IWalletQueries
 
     public async Task<LedgerEntriesPage?> GetLedgerEntriesAsync(
         Guid walletId,
+        Guid ownerId,
         LedgerEntriesFilter filter,
         CancellationToken cancellationToken)
     {
-        if (!await _dbContext.Wallets.AnyAsync(w => w.Id == walletId, cancellationToken))
+        if (!await _dbContext.Wallets.AnyAsync(w => w.Id == walletId && w.OwnerId == ownerId, cancellationToken))
         {
             return null;
         }

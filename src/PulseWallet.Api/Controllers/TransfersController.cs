@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using PulseWallet.Api.Contracts;
+using PulseWallet.Api.Extensions;
 using PulseWallet.Application.Transfers;
 using PulseWallet.Application.Transfers.CreateTransfer;
 using PulseWallet.Application.Transfers.GetTransferById;
@@ -10,6 +11,8 @@ namespace PulseWallet.Api.Controllers;
 [ApiController]
 [Route("api/transfers")]
 [Produces("application/json")]
+// Every endpoint here requires a signed-in user (the fallback policy); someone else's wallet or transfer is a 404.
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public class TransfersController : ControllerBase
 {
     // A replay (same Idempotency-Key, same body) returns the original transfer with 201 again,
@@ -26,7 +29,7 @@ public class TransfersController : ControllerBase
         [FromServices] CreateTransferHandler handler,
         CancellationToken cancellationToken)
     {
-        TransferDetails transfer = await handler.HandleAsync(request.ToCommand(idempotencyKey), cancellationToken);
+        TransferDetails transfer = await handler.HandleAsync(request.ToCommand(User.GetUserId(), idempotencyKey), cancellationToken);
         return CreatedAtAction(nameof(GetTransferById), new { id = transfer.Id }, TransferResponse.From(transfer));
     }
 
@@ -38,7 +41,7 @@ public class TransfersController : ControllerBase
         [FromServices] GetTransferByIdHandler handler,
         CancellationToken cancellationToken)
     {
-        TransferDetails transfer = await handler.HandleAsync(id, cancellationToken);
+        TransferDetails transfer = await handler.HandleAsync(id, User.GetUserId(), cancellationToken);
         return Ok(TransferResponse.From(transfer));
     }
 }

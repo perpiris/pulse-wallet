@@ -36,6 +36,10 @@ public sealed partial class TopUpWalletHandler
     {
         Money amount = Money.Create(command.Amount, command.Currency);
 
+        // Ownership first, before the replay below: otherwise anyone who knew a wallet id and an old
+        // idempotency key could replay a request and read back that wallet's details.
+        Wallet wallet = await _walletRepository.GetOwnedAsync(command.WalletId, command.UserId, cancellationToken);
+
         // A retry of a request that already succeeded: don't move money again, return the current state.
         LedgerEntry? existing = await _ledgerEntryRepository.GetByIdempotencyKeyAsync(
             command.WalletId, command.IdempotencyKey, cancellationToken);
@@ -47,13 +51,7 @@ public sealed partial class TopUpWalletHandler
             }
 
             LogTopUpReplayed(command.IdempotencyKey, existing.Id);
-            return await GetDetailsAsync(command.WalletId, cancellationToken);
-        }
-
-        Wallet? wallet = await _walletRepository.GetByIdAsync(command.WalletId, cancellationToken);
-        if (wallet is null)
-        {
-            throw new WalletNotFoundException(command.WalletId);
+            return await GetDetailsAsync(command.WalletId, command.UserId, cancellationToken);
         }
 
         LedgerEntry entry = wallet.TopUp(amount, command.IdempotencyKey, _timeProvider.GetUtcNow());
@@ -64,12 +62,12 @@ public sealed partial class TopUpWalletHandler
 
         LogToppedUp(wallet.Id, command.Amount, command.Currency, entry.Id);
 
-        return await GetDetailsAsync(wallet.Id, cancellationToken);
+        return await GetDetailsAsync(wallet.Id, command.UserId, cancellationToken);
     }
 
-    private async Task<WalletDetails> GetDetailsAsync(Guid walletId, CancellationToken cancellationToken)
+    private async Task<WalletDetails> GetDetailsAsync(Guid walletId, Guid userId, CancellationToken cancellationToken)
     {
-        return await _walletQueries.GetDetailsAsync(walletId, WalletDetails.RecentEntriesCount, cancellationToken)
+        return await _walletQueries.GetDetailsAsync(walletId, userId, WalletDetails.RecentEntriesCount, cancellationToken)
                ?? throw new WalletNotFoundException(walletId);
     }
 

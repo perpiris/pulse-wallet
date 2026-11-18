@@ -34,7 +34,7 @@ try
     app.UseAuthorization();        // then checks [Authorize] requirements against that user
     app.MapControllers();
     app.MapAuthEndpoints();
-    app.MapHealthChecks("/health");
+    app.MapHealthChecks("/health").AllowAnonymous(); // load balancers and Docker probe it without signing in
 
     app.Run();
 

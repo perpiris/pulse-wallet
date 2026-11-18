@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using PulseWallet.Api.Contracts;
+using PulseWallet.Api.Extensions;
 using PulseWallet.Application.Ledger;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
@@ -14,6 +15,8 @@ namespace PulseWallet.Api.Controllers;
 [ApiController]
 [Route("api/wallets")]
 [Produces("application/json")]
+// Every endpoint here requires a signed-in user (the fallback policy); someone else's wallet or transfer is a 404.
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public class WalletsController : ControllerBase
 {
     // The error responses are produced by GlobalExceptionHandler, not here;
@@ -27,7 +30,7 @@ public class WalletsController : ControllerBase
         [FromServices] CreateWalletHandler handler,
         CancellationToken cancellationToken)
     {
-        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(), cancellationToken);
+        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(User.GetUserId()), cancellationToken);
         return CreatedAtAction(nameof(GetWalletById), new { id = wallet.Id }, WalletDetailsResponse.From(wallet));
     }
 
@@ -39,7 +42,7 @@ public class WalletsController : ControllerBase
         [FromServices] GetWalletByIdHandler handler,
         CancellationToken cancellationToken)
     {
-        WalletDetails wallet = await handler.HandleAsync(id, cancellationToken);
+        WalletDetails wallet = await handler.HandleAsync(id, User.GetUserId(), cancellationToken);
         return Ok(WalletDetailsResponse.From(wallet));
     }
 
@@ -53,7 +56,7 @@ public class WalletsController : ControllerBase
         [FromServices] GetWalletLedgerEntriesHandler handler,
         CancellationToken cancellationToken)
     {
-        LedgerEntriesPage page = await handler.HandleAsync(request.ToQuery(id), cancellationToken);
+        LedgerEntriesPage page = await handler.HandleAsync(request.ToQuery(id, User.GetUserId()), cancellationToken);
         return Ok(LedgerEntriesPageResponse.From(page));
     }
 
@@ -70,7 +73,7 @@ public class WalletsController : ControllerBase
         [FromServices] TopUpWalletHandler handler,
         CancellationToken cancellationToken)
     {
-        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(id, idempotencyKey), cancellationToken);
+        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(id, User.GetUserId(), idempotencyKey), cancellationToken);
         return Ok(WalletDetailsResponse.From(wallet));
     }
 
@@ -87,7 +90,7 @@ public class WalletsController : ControllerBase
         [FromServices] WithdrawFromWalletHandler handler,
         CancellationToken cancellationToken)
     {
-        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(id, idempotencyKey), cancellationToken);
+        WalletDetails wallet = await handler.HandleAsync(request.ToCommand(id, User.GetUserId(), idempotencyKey), cancellationToken);
         return Ok(WalletDetailsResponse.From(wallet));
     }
 }

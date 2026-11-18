@@ -9,6 +9,7 @@ namespace PulseWallet.Domain.UnitTests.Transfers;
 public sealed class TransferTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 12, 10, 0, 0, TimeSpan.Zero);
+    private static readonly Guid OwnerId = Guid.CreateVersion7();
 
     [Fact]
     public void Execute_WithSufficientFunds_MovesMoneyAndReturnsTransferWithBothEntries()
@@ -159,7 +160,7 @@ public sealed class TransferTests
 
     private static Wallet CreateWalletWithBalance(string username, decimal balance, Currency currency = Currency.EUR)
     {
-        Wallet wallet = Wallet.Create(username, currency, Now);
+        Wallet wallet = Wallet.Create(OwnerId, username, currency, Now);
         if (balance > 0)
         {
             wallet.TopUp(Money.Create(balance, currency), Guid.NewGuid(), Now);

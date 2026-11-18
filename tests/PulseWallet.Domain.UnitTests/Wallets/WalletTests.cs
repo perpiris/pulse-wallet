@@ -8,17 +8,36 @@ namespace PulseWallet.Domain.UnitTests.Wallets;
 public sealed class WalletTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 12, 10, 0, 0, TimeSpan.Zero);
+    private static readonly Guid OwnerId = Guid.CreateVersion7();
 
     [Fact]
     public void Create_WithValidUsername_ReturnsEmptyWalletWithNormalizedUsername()
     {
-        Wallet wallet = Wallet.Create("  Alice_01 ", Currency.EUR, Now);
+        Wallet wallet = Wallet.Create(OwnerId, "  Alice_01 ", Currency.EUR, Now);
 
         Assert.NotEqual(Guid.Empty, wallet.Id);
         Assert.Equal("alice_01", wallet.Username);
         Assert.Equal(Currency.EUR, wallet.Currency);
         Assert.Equal(0m, wallet.Balance);
         Assert.Equal(Now, wallet.CreatedAt);
+        Assert.Equal(OwnerId, wallet.OwnerId);
+    }
+
+    [Fact]
+    public void Create_WithoutOwner_Throws()
+    {
+        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(Guid.Empty, "Alice", Currency.EUR, Now));
+
+        Assert.Contains("owner", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void IsOwnedBy_ReturnsTrueOnlyForTheOwner()
+    {
+        Wallet wallet = CreateWallet();
+
+        Assert.True(wallet.IsOwnedBy(OwnerId));
+        Assert.False(wallet.IsOwnedBy(Guid.CreateVersion7()));
     }
 
     [Theory]
@@ -26,7 +45,7 @@ public sealed class WalletTests
     [InlineData("alicé")]
     public void Create_WithInvalidUsernameChar_ThrowsDomainException(string username)
     {
-        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(username, Currency.EUR, Now));
+        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, username, Currency.EUR, Now));
         Assert.Contains("Username cannot contain special characters", exception.Message);
     }
 
@@ -36,14 +55,14 @@ public sealed class WalletTests
     [InlineData("  al  ")]
     public void Create_WithOurOfRangeUsernameLength_ThrowsDomainException(string username)
     {
-        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(username, Currency.EUR, Now));
+        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, username, Currency.EUR, Now));
         Assert.Contains("Username must be between", exception.Message);
     }
 
     [Fact]
     public void Create_WithUnsupportedCurrency_ThrowsDomainException()
     {
-        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create("Alice", (Currency)123, Now));
+        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, "Alice", (Currency)123, Now));
         Assert.Contains("is not supported", exception.Message);
     }
 
@@ -53,7 +72,7 @@ public sealed class WalletTests
     [InlineData("   ")]
     public void Create_WithMissingUsername_ThrowsDomainException(string? username)
     {
-        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(username!, Currency.EUR, Now));
+        DomainException exception = Assert.Throws<DomainException>(() => Wallet.Create(OwnerId, username!, Currency.EUR, Now));
         Assert.Contains("Username cannot be null or empty", exception.Message);
     }
 
@@ -62,7 +81,7 @@ public sealed class WalletTests
     [InlineData("abcdefghijklmnopqrst")]
     public void Create_WithUsernameAtLengthLimit_Succeeds(string username)
     {
-        Wallet wallet = Wallet.Create(username, Currency.EUR, Now);
+        Wallet wallet = Wallet.Create(OwnerId, username, Currency.EUR, Now);
 
         Assert.Equal(username, wallet.Username);
     }
@@ -198,7 +217,7 @@ public sealed class WalletTests
 
     private static Wallet CreateWallet(Currency currency = Currency.EUR)
     {
-        return Wallet.Create("Alice", currency, Now);
+        return Wallet.Create(OwnerId, "Alice", currency, Now);
     }
 
     private static Wallet CreateWalletWithBalance(decimal balance, Currency currency = Currency.EUR)

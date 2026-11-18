@@ -265,6 +265,9 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("nvarchar(3)");
 
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -276,6 +279,8 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -425,6 +430,15 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                     b.HasOne("PulseWallet.Domain.Wallets.Wallet", null)
                         .WithMany()
                         .HasForeignKey("SourceWalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PulseWallet.Domain.Wallets.Wallet", b =>
+                {
+                    b.HasOne("PulseWallet.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

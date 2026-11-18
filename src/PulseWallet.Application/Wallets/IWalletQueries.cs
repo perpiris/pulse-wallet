@@ -4,6 +4,13 @@ namespace PulseWallet.Application.Wallets;
 
 public interface IWalletQueries
 {
-    Task<WalletDetails?> GetDetailsAsync(Guid walletId, int recentEntries, CancellationToken cancellationToken);
-    Task<LedgerEntriesPage?> GetLedgerEntriesAsync(Guid walletId, LedgerEntriesFilter filter, CancellationToken cancellationToken);
+    // Both return null for a wallet that doesn't exist or isn't owned by ownerId: the owner filter is part of the
+    // query itself, so a read can never return someone else's wallet, and callers can't forget the check.
+    Task<WalletDetails?> GetDetailsAsync(Guid walletId, Guid ownerId, int recentEntries, CancellationToken cancellationToken);
+
+    Task<LedgerEntriesPage?> GetLedgerEntriesAsync(
+        Guid walletId,
+        Guid ownerId,
+        LedgerEntriesFilter filter,
+        CancellationToken cancellationToken);
 }

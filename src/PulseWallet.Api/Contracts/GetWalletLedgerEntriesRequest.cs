@@ -28,9 +28,9 @@ public record GetWalletLedgerEntriesRequest : IValidatableObject
         }
     }
 
-    public GetWalletLedgerEntriesQuery ToQuery(Guid walletId)
+    public GetWalletLedgerEntriesQuery ToQuery(Guid walletId, Guid userId)
     {
         LedgerEntriesCursor.TryDecode(Before, out LedgerEntriesCursor? before);
-        return new GetWalletLedgerEntriesQuery(walletId, From, To, Direction, before);
+        return new GetWalletLedgerEntriesQuery(walletId, userId, From, To, Direction, before);
     }
 }

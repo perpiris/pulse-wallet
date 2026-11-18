@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PulseWallet.Domain.Wallets;
+using PulseWallet.Infrastructure.Identity;
 
 namespace PulseWallet.Infrastructure.Persistence.Configurations;
 
@@ -13,6 +14,14 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
         builder.HasKey(w => w.Id);
         builder.Property(w => w.Id)
             .ValueGeneratedNever();
+
+        // A real foreign key to the Identity users table, configured here so the domain stays unaware of it.
+        // Restrict: deleting a user who still owns wallets fails instead of deleting their money's history.
+        // The FK also gets an index, which every "wallets of this user" lookup uses.
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(w => w.OwnerId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(w => w.Username)
             .IsRequired()

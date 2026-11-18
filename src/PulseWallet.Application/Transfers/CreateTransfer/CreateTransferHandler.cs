@@ -41,6 +41,10 @@ public sealed partial class CreateTransferHandler
     {
         Money amount = Money.Create(command.Amount, command.Currency);
 
+        // You can only send from your own wallet, but to anyone's. Checked before the replay, for the same
+        // reason as in the top-up handler: a replay must not reveal a transfer to someone who doesn't own the source.
+        Wallet source = await _walletRepository.GetOwnedAsync(command.SourceWalletId, command.UserId, cancellationToken);
+
         // A retry of a transfer that already went through: don't send again, return the original transfer.
         Transfer? existing = await _transferRepository.GetByIdempotencyKeyAsync(
             command.SourceWalletId, command.IdempotencyKey, cancellationToken);
@@ -52,10 +56,9 @@ public sealed partial class CreateTransferHandler
             }
 
             LogTransferReplayed(command.IdempotencyKey, existing.Id);
-            return await GetDetailsAsync(existing.Id, cancellationToken);
+            return await GetDetailsAsync(existing.Id, command.UserId, cancellationToken);
         }
 
-        Wallet source = await GetWalletAsync(command.SourceWalletId, cancellationToken);
         Wallet destination = await GetWalletAsync(command.DestinationWalletId, cancellationToken);
 
         TransferExecution execution = Transfer.Execute(
@@ -71,7 +74,7 @@ public sealed partial class CreateTransferHandler
 
         LogTransferCreated(execution.Transfer.Id, command.Amount, command.Currency, source.Id, destination.Id);
 
-        return await GetDetailsAsync(execution.Transfer.Id, cancellationToken);
+        return await GetDetailsAsync(execution.Transfer.Id, command.UserId, cancellationToken);
     }
 
     private async Task<Wallet> GetWalletAsync(Guid walletId, CancellationToken cancellationToken)
@@ -80,9 +83,9 @@ public sealed partial class CreateTransferHandler
                ?? throw new WalletNotFoundException(walletId);
     }
 
-    private async Task<TransferDetails> GetDetailsAsync(Guid transferId, CancellationToken cancellationToken)
+    private async Task<TransferDetails> GetDetailsAsync(Guid transferId, Guid userId, CancellationToken cancellationToken)
     {
-        return await _transferQueries.GetDetailsAsync(transferId, cancellationToken)
+        return await _transferQueries.GetDetailsAsync(transferId, userId, cancellationToken)
                ?? throw new TransferNotFoundException(transferId);
     }
 

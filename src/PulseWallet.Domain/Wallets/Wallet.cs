@@ -10,6 +10,10 @@ public sealed class Wallet
     public const int UsernameMaxLength = 20;
 
     public Guid Id { get; private set; }
+
+    // The id of the user who owns the wallet. Just an id: the domain doesn't know about sign-in accounts.
+    public Guid OwnerId { get; private set; }
+
     public string Username { get; private set; } = null!;
     public Currency Currency { get; private set; }
     public decimal Balance { get; private set; }
@@ -19,8 +23,13 @@ public sealed class Wallet
     {
     }
 
-    public static Wallet Create(string username, Currency currency, DateTimeOffset now)
+    public static Wallet Create(Guid ownerId, string username, Currency currency, DateTimeOffset now)
     {
+        if (ownerId == Guid.Empty)
+        {
+            throw new DomainException("A wallet must have an owner.");
+        }
+
         if (string.IsNullOrWhiteSpace(username))
         {
             throw new DomainException("Username cannot be null or empty");
@@ -46,11 +55,17 @@ public sealed class Wallet
         return new Wallet
         {
             Id = Guid.CreateVersion7(),
+            OwnerId = ownerId,
             Username = normalizedUsername,
             Currency = currency,
             Balance = 0,
             CreatedAt = now
         };
+    }
+
+    public bool IsOwnedBy(Guid userId)
+    {
+        return OwnerId == userId;
     }
 
     public LedgerEntry TopUp(Money amount, Guid idempotencyKey, DateTimeOffset now)

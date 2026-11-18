@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authorization;
 using PulseWallet.Api.ErrorHandling;
 using PulseWallet.Infrastructure.Identity;
 using PulseWallet.Infrastructure.Persistence;
@@ -70,7 +71,13 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddIdentityAuthentication(this IServiceCollection services)
     {
-        services.AddAuthorization();
+        // Secure by default: an endpoint with no [Authorize] / [AllowAnonymous] of its own requires a signed-in
+        // user, so a new endpoint that forgets [Authorize] fails closed (401) instead of being public.
+        // The few public endpoints opt out explicitly with AllowAnonymous (health, OpenAPI, sign-in).
+        services.AddAuthorizationBuilder()
+            .SetFallbackPolicy(new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build());
 
         // Registers ASP.NET Core Identity (users, password hashing, lockout) plus the bearer token
         // authentication scheme that the /api/auth/login endpoint issues tokens for.

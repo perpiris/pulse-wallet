@@ -28,7 +28,7 @@ public partial class CreateWalletHandler
 
     public async Task<WalletDetails> HandleAsync(CreateWalletCommand command, CancellationToken cancellationToken)
     {
-        Wallet wallet = Wallet.Create(command.Username, command.Currency, _timeProvider.GetUtcNow());
+        Wallet wallet = Wallet.Create(command.OwnerId, command.Username, command.Currency, _timeProvider.GetUtcNow());
 
         if (await _walletRepository.UsernameExistsAsync(wallet.Username, cancellationToken))
         {
@@ -41,7 +41,8 @@ public partial class CreateWalletHandler
         LogWalletCreated(wallet.Id, wallet.Username);
 
         // Read back through the read side, so POST and GET return the same shape built the same way.
-        return await _walletQueries.GetDetailsAsync(wallet.Id, WalletDetails.RecentEntriesCount, cancellationToken)
+        return await _walletQueries.GetDetailsAsync(
+                   wallet.Id, command.OwnerId, WalletDetails.RecentEntriesCount, cancellationToken)
             ?? throw new InvalidOperationException($"Wallet '{wallet.Id}' was not found right after it was saved.");
     }
 

@@ -4,6 +4,7 @@
 GET {{baseUrl}}/health
 
 ### Register (stores the email and password in {{email}} / {{password}} for the login below)
+# Every wallet and transfer request needs the token from "Log in": run Register and Log in first.
 < {%
   client.global.set("email", "user" + Math.floor(Math.random() * 100000) + "@example.com");
   client.global.set("password", "Correct-Horse-9");
@@ -49,6 +50,7 @@ Content-Type: application/json
 
 ### Create a wallet (stores the new wallet's id in {{walletId}} for the requests below)
 POST {{baseUrl}}/api/wallets
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -60,12 +62,15 @@ Content-Type: application/json
 
 ### Get a wallet
 GET {{baseUrl}}/api/wallets/{{walletId}}
+Authorization: Bearer {{accessToken}}
 
 ### Wallet history (all optional: from/to are UTC days, both included; direction=Incoming|Outgoing; before=nextCursor)
 GET {{baseUrl}}/api/wallets/{{walletId}}/ledger-entries?from=2026-11-01&to=2026-11-15&direction=Outgoing
+Authorization: Bearer {{accessToken}}
 
 ### Top up
 POST {{baseUrl}}/api/wallets/{{walletId}}/top-ups
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 Idempotency-Key: {{$random.uuid}}
 
@@ -76,6 +81,7 @@ Idempotency-Key: {{$random.uuid}}
 
 ### Withdraw
 POST {{baseUrl}}/api/wallets/{{walletId}}/withdrawals
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 Idempotency-Key: {{$random.uuid}}
 
@@ -86,6 +92,7 @@ Idempotency-Key: {{$random.uuid}}
 
 ### Create a second wallet to receive transfers (stores its id in {{destinationWalletId}})
 POST {{baseUrl}}/api/wallets
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -97,6 +104,7 @@ Content-Type: application/json
 
 ### Transfer (instant, same currency; stores the new transfer's id in {{transferId}})
 POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 Idempotency-Key: {{$random.uuid}}
 
@@ -111,3 +119,4 @@ Idempotency-Key: {{$random.uuid}}
 
 ### Get a transfer
 GET {{baseUrl}}/api/transfers/{{transferId}}
+Authorization: Bearer {{accessToken}}

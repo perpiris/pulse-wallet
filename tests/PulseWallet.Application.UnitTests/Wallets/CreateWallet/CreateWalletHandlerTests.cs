@@ -10,6 +10,7 @@ namespace PulseWallet.Application.UnitTests.Wallets.CreateWallet;
 public sealed class CreateWalletHandlerTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 12, 10, 0, 0, TimeSpan.Zero);
+    private static readonly Guid OwnerId = Guid.CreateVersion7();
 
     private readonly IWalletRepository _walletRepository = Substitute.For<IWalletRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -34,7 +35,7 @@ public sealed class CreateWalletHandlerTests
     public async Task HandleAsync_WithFreeUsername_SavesWalletAndReturnsItsDetails()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        CreateWalletCommand command = new CreateWalletCommand("Alice", Currency.EUR);
+        CreateWalletCommand command = new CreateWalletCommand(OwnerId, "Alice", Currency.EUR);
 
         _walletRepository.UsernameExistsAsync("alice", cancellationToken).Returns(false);
 
@@ -44,13 +45,14 @@ public sealed class CreateWalletHandlerTests
         // The read side is a substitute too: it answers with whatever id the handler asks for,
         // so the assertion on result.Id checks that the handler read back the wallet it just saved.
         _walletQueries
-            .GetDetailsAsync(Arg.Any<Guid>(), WalletDetails.RecentEntriesCount, cancellationToken)
-            .Returns(call => new WalletDetails(call.Arg<Guid>(), "alice", Currency.EUR, 0m, Now, []));
+            .GetDetailsAsync(Arg.Any<Guid>(), OwnerId, WalletDetails.RecentEntriesCount, cancellationToken)
+            .Returns(call => new WalletDetails(call.ArgAt<Guid>(0), "alice", Currency.EUR, 0m, Now, []));
 
         WalletDetails result = await _handler.HandleAsync(command, cancellationToken);
 
         Assert.NotNull(added);
         Assert.Equal("alice", added.Username);
+        Assert.Equal(OwnerId, added.OwnerId);
         Assert.Equal(Now, added.CreatedAt);
         await _unitOfWork.Received(1).SaveChangesAsync(cancellationToken);
         Assert.Equal(added.Id, result.Id);

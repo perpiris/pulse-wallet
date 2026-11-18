@@ -25,7 +25,8 @@ public sealed class GetWalletLedgerEntriesHandler
             Before: query.Before,
             PageSize: PageSize);
 
-        LedgerEntriesPage? page = await _walletQueries.GetLedgerEntriesAsync(query.WalletId, filter, cancellationToken);
+        LedgerEntriesPage? page = await _walletQueries.GetLedgerEntriesAsync(
+            query.WalletId, query.UserId, filter, cancellationToken);
         if (page is null)
         {
             throw new WalletNotFoundException(query.WalletId);

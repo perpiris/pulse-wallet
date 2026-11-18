@@ -104,7 +104,9 @@ Secondary for this project, possible later:
 - [ ] Rate limiting
 - [ ] OpenTelemetry tracing
 - [x] Authentication: ASP.NET Core Identity, register / login / refresh at `/api/auth` (bearer tokens)
-- [ ] Authorization: users only see and use the wallets they own
+- [x] Sign-in required by default (fallback policy); health, OpenAPI and register/login stay public
+- [x] Wallet ownership: users only see and use the wallets they own (someone else's wallet is a 404)
+- [ ] Roles and permissions (Customer, Admin), seeded; admin endpoints
 
 **Frontend**
 - [x] Choose a framework: Angular
@@ -160,6 +162,8 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **`Money` value object** for amounts that travel with their currency; amounts someone enters are rejected, never rounded
 - **Top-up and withdraw are separate operations** (`Wallet.TopUp`, `Wallet.Withdraw`): the wallet changes its balance and returns the ledger entry, and both are saved in one transaction
 - **Optimistic concurrency:** a `rowversion` on `Wallets` (an EF shadow property, so the domain stays clean). A conflicting save returns 409 and the client retries
+- **Authentication:** ASP.NET Core Identity in the same database (`IdentityDbContext`, Guid keys); `/api/auth` endpoints from `MapIdentityApi` issue bearer + refresh tokens. A **fallback policy** requires a signed-in user on every endpoint that doesn't opt out with `AllowAnonymous`, so a forgotten `[Authorize]` fails closed
+- **Ownership (resource-based authorization):** a wallet has an `OwnerId` (a foreign key to `AspNetUsers`, unknown to the domain). Commands load the wallet and check `IsOwnedBy` before anything else, including the idempotency replay; reads filter by owner in the SQL. Someone else's wallet or transfer gets the same 404 as a missing one, so ids can't be probed. A transfer can go to anyone's wallet, and both sides can see it
 - **Idempotency:** money-moving requests require an `Idempotency-Key` header. The key is stored on the ledger entry with a unique index per wallet, in the same transaction as the money change. Same key and same request → the result is replayed and no money moves; same key, different request → 422. A unique-index race (two requests with the same key, or the same username, at the same moment) returns 409, and the retry gets the replay
 - **Read committed snapshot isolation (RCSI)** on the database: reads use the last committed row version instead of waiting for locks, so a read can't deadlock with a concurrent update
 - **Exceptions for broken business rules**, mapped to ProblemDetails (RFC 9457) in one place

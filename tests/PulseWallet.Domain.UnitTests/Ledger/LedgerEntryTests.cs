@@ -7,6 +7,7 @@ namespace PulseWallet.Domain.UnitTests.Ledger;
 public sealed class LedgerEntryTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 12, 10, 0, 0, TimeSpan.Zero);
+    private static readonly Guid OwnerId = Guid.CreateVersion7();
 
     [Fact]
     public void Matches_WithSameTypeAndAmount_IsTrue()
@@ -34,7 +35,7 @@ public sealed class LedgerEntryTests
 
     private static LedgerEntry CreateTopUpEntry(decimal amount)
     {
-        Wallet wallet = Wallet.Create("alice", Currency.EUR, Now);
+        Wallet wallet = Wallet.Create(OwnerId, "alice", Currency.EUR, Now);
         return wallet.TopUp(Money.Create(amount, Currency.EUR), Guid.NewGuid(), Now);
     }
 }

@@ -10,8 +10,8 @@ public record CreateTransferRequest
     public required decimal Amount { get; init; }
     public required Currency Currency { get; init; }
 
-    public CreateTransferCommand ToCommand(Guid idempotencyKey)
+    public CreateTransferCommand ToCommand(Guid userId, Guid idempotencyKey)
     {
-        return new CreateTransferCommand(SourceWalletId, DestinationWalletId, Amount, Currency, idempotencyKey);
+        return new CreateTransferCommand(userId, SourceWalletId, DestinationWalletId, Amount, Currency, idempotencyKey);
     }
 }

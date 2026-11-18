@@ -9,9 +9,10 @@ public class GetWalletByIdHandler
         _walletQueries = walletQueries;
     }
 
-    public async Task<WalletDetails> HandleAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<WalletDetails> HandleAsync(Guid id, Guid userId, CancellationToken cancellationToken)
     {
-        WalletDetails? wallet = await _walletQueries.GetDetailsAsync(id, WalletDetails.RecentEntriesCount, cancellationToken);
+        WalletDetails? wallet = await _walletQueries.GetDetailsAsync(
+            id, userId, WalletDetails.RecentEntriesCount, cancellationToken);
 
         if (wallet is null)
         {

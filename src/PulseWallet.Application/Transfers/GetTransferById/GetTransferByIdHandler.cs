@@ -9,9 +9,9 @@ public sealed class GetTransferByIdHandler
         _transferQueries = transferQueries;
     }
 
-    public async Task<TransferDetails> HandleAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<TransferDetails> HandleAsync(Guid id, Guid userId, CancellationToken cancellationToken)
     {
-        TransferDetails? transfer = await _transferQueries.GetDetailsAsync(id, cancellationToken);
+        TransferDetails? transfer = await _transferQueries.GetDetailsAsync(id, userId, cancellationToken);
 
         if (transfer is null)
         {

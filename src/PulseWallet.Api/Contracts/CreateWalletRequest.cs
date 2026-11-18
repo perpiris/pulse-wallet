@@ -8,8 +8,8 @@ public record CreateWalletRequest
     public required string Username { get; init; }
     public required Currency Currency { get; init; }
 
-    public CreateWalletCommand ToCommand()
+    public CreateWalletCommand ToCommand(Guid ownerId)
     {
-        return new CreateWalletCommand(Username, Currency);
+        return new CreateWalletCommand(ownerId, Username, Currency);
     }
 }
