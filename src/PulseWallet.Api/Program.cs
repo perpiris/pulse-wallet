@@ -21,6 +21,8 @@ try
         .AddInfrastructure(builder.Configuration)
         .AddApi()
         .AddIdentityAuthentication(builder.Configuration)
+        .AddReverseProxySupport(builder.Configuration)
+        .AddApiRateLimiting(builder.Configuration)
         .AddDatabaseHealthChecks(builder.Configuration);
 
     WebApplication app = builder.Build();
@@ -28,14 +30,18 @@ try
     await app.ApplyMigrationsInDevelopmentAsync();
 
     // The middleware pipeline stays here, in order: the order matters, so it should be visible at a glance.
-    app.UseSerilogRequestLogging(); // outermost, so it logs the final status code (after errors are turned into 4xx/5xx)
+    app.UseForwardedHeaders();      // first, so everything after it (request log, rate limiter) sees the real client IP
+    app.UseSerilogRequestLogging(); // outermost after that, so it logs the final status code (after errors are turned into 4xx/5xx)
     app.UseExceptionHandler();      // next, so it catches exceptions from everything after it
     app.UseApiDocumentation();
     app.UseAuthentication();       // reads the bearer token into HttpContext.User
+    app.UseRateLimiter();          // after authentication, so it can count per user; before authorization, so floods of 401s count too
     app.UseAuthorization();        // then checks [Authorize] requirements against that user
     app.MapControllers();
     app.MapAuthEndpoints();
-    app.MapHealthChecks("/health").AllowAnonymous(); // load balancers and Docker probe it without signing in
+    app.MapHealthChecks("/health")
+        .AllowAnonymous()          // load balancers and Docker probe it without signing in
+        .DisableRateLimiting();    // and every few seconds: a throttled probe would mark a healthy instance as down
 
     app.Run();
 

@@ -1,11 +1,16 @@
 using System.Globalization;
+using System.Net;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using PulseWallet.Api.ErrorHandling;
+using PulseWallet.Api.RateLimiting;
 using PulseWallet.Application.Telemetry;
 using PulseWallet.Infrastructure.Identity;
 using PulseWallet.Infrastructure.Persistence;
@@ -137,6 +142,110 @@ public static class ServiceCollectionExtensions
         services.Configure<IdentityOptions>(options => configuration.GetSection("Identity:Password").Bind(options.Password));
 
         return services;
+    }
+
+    public static IServiceCollection AddReverseProxySupport(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Behind nginx every request comes from nginx's address; the real client is in X-Forwarded-For.
+        // That header is plain text anyone can send, so it's only believed from known proxies: the nginx container
+        // (its fixed address comes from compose.yaml) and loopback, which the framework trusts by default.
+        // A request straight to the API's published port comes from Docker's gateway, so its header is ignored.
+        string[] knownProxies = configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+            // ForwardLimit stays 1: only the last entry is used, the one nginx appended. Anything a client put in
+            // front of it ("X-Forwarded-For: 1.2.3.4" to get a fresh rate limit bucket) is ignored.
+            foreach (string proxy in knownProxies)
+            {
+                options.KnownProxies.Add(IPAddress.Parse(proxy));
+            }
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddApiRateLimiting(this IServiceCollection services, IConfiguration configuration)
+    {
+        RateLimitingOptions limits = configuration.GetSection(RateLimitingOptions.SectionName).Get<RateLimitingOptions>()
+            ?? throw new InvalidOperationException("Rate limiting is not configured.");
+
+        services.AddRateLimiter(options =>
+        {
+            // Every request, on every endpoint, counts towards its client's bucket. Each partition key gets its own
+            // limiter, created on first use; QueueLimit stays 0, so an over-limit request is rejected at once
+            // instead of being held open on the server.
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                RateLimitPartition.GetFixedWindowLimiter(GetClientPartitionKey(context), _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = limits.Global.PermitLimit,
+                    Window = limits.Global.Window
+                }));
+
+            // Token bucket, not fixed window: a fixed window lets a client spend its whole limit at the end of one
+            // window and again at the start of the next, twice the limit within seconds. A bucket allows a small
+            // burst, then only the refill rate. (A sliding window also avoids the edge, but its rejections carry
+            // no RetryAfter, so there'd be no Retry-After header.)
+            options.AddPolicy(RateLimitPolicies.MoneyMovement, context =>
+                RateLimitPartition.GetTokenBucketLimiter(GetClientPartitionKey(context), _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = limits.MoneyMovement.TokenLimit,
+                    TokensPerPeriod = limits.MoneyMovement.TokensPerPeriod,
+                    ReplenishmentPeriod = limits.MoneyMovement.ReplenishmentPeriod
+                }));
+
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                HttpContext httpContext = context.HttpContext;
+
+                // Tells a well-behaved client how long to wait instead of retrying in a tight loop.
+                // Whole seconds, rounded up: the header's delay-seconds form allows no fractions.
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
+                {
+                    int seconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
+                    httpContext.Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
+                }
+
+                const string title = "Too many requests";
+                const string detail = "Too many requests. Wait before trying again.";
+
+                // Same as GlobalExceptionHandler: the request log line says why the request got a 429.
+                IDiagnosticContext diagnosticContext = httpContext.RequestServices.GetRequiredService<IDiagnosticContext>();
+                diagnosticContext.Set("ProblemTitle", title);
+                diagnosticContext.Set("ProblemDetail", detail);
+
+                IProblemDetailsService problemDetailsService = httpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
+                await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+                {
+                    HttpContext = httpContext,
+                    ProblemDetails =
+                    {
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Title = title,
+                        Detail = detail
+                    }
+                });
+            };
+        });
+
+        return services;
+    }
+
+    // Signed-in requests are counted per user, so one user can't get more by switching networks, and users behind
+    // the same office NAT don't share a bucket. Anonymous requests (register, login, refresh) are counted per IP.
+    // Runs after UseAuthentication, so HttpContext.User is already filled from the bearer token.
+    private static string GetClientPartitionKey(HttpContext context)
+    {
+        string? userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is not null)
+        {
+            return $"user:{userId}";
+        }
+
+        return $"ip:{context.Connection.RemoteIpAddress}";
     }
 
     public static IServiceCollection AddDatabaseHealthChecks(this IServiceCollection services, IConfiguration configuration)

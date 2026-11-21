@@ -11,6 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Microsoft's coverage extension for Microsoft.Testing.Platform: lets dotnet test collect code coverage. -->
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
 
