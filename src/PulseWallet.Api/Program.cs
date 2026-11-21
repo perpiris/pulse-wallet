@@ -16,6 +16,7 @@ try
 
     builder.Services
         .AddSerilogLogging(builder.Configuration, builder.Environment)
+        .AddOpenTelemetryTracing(builder.Configuration)
         .AddApplication()
         .AddInfrastructure(builder.Configuration)
         .AddApi()

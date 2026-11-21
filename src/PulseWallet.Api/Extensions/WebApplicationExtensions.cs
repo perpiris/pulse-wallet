@@ -47,7 +47,7 @@ public static class WebApplicationExtensions
 
     // Development only: a fresh `docker compose up` gets a working database with no manual step.
     // Production never migrates at startup: several instances would race, and the app's database user
-    // shouldn't have DDL rights. There, the pipeline applies migrations before the deploy (#11).
+    // shouldn't have DDL rights. There, the pipeline applies migrations before the deployment (#11).
     public static async Task ApplyMigrationsInDevelopmentAsync(this WebApplication app)
     {
         if (!app.Environment.IsDevelopment())
