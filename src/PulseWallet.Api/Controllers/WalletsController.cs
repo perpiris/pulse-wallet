@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using PulseWallet.Api.Contracts;
 using PulseWallet.Api.Extensions;
+using PulseWallet.Api.RateLimiting;
 using PulseWallet.Application.Ledger;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Application.Wallets.CreateWallet;
@@ -18,6 +20,8 @@ namespace PulseWallet.Api.Controllers;
 [Produces("application/json")]
 // Every endpoint here requires a signed-in user (the fallback policy); someone else's wallet or transfer is a 404.
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+// Any endpoint can be rate limited: every request counts towards the global limiter (AddApiRateLimiting).
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json")]
 public class WalletsController : ControllerBase
 {
     // The signed-in user's own wallets. No paging: a person has a handful of wallets, not thousands.
@@ -73,6 +77,7 @@ public class WalletsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/top-ups")]
+    [EnableRateLimiting(RateLimitPolicies.MoneyMovement)]
     [ProducesResponseType<WalletDetailsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
@@ -90,6 +95,7 @@ public class WalletsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/withdrawals")]
+    [EnableRateLimiting(RateLimitPolicies.MoneyMovement)]
     [ProducesResponseType<WalletDetailsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]

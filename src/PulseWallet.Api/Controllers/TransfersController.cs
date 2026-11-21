@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using PulseWallet.Api.Contracts;
 using PulseWallet.Api.Extensions;
+using PulseWallet.Api.RateLimiting;
 using PulseWallet.Application.Transfers;
 using PulseWallet.Application.Transfers.CreateTransfer;
 using PulseWallet.Application.Transfers.GetTransferById;
@@ -13,11 +15,14 @@ namespace PulseWallet.Api.Controllers;
 [Produces("application/json")]
 // Every endpoint here requires a signed-in user (the fallback policy); someone else's wallet or transfer is a 404.
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+// Any endpoint can be rate limited: every request counts towards the global limiter (AddApiRateLimiting).
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json")]
 public class TransfersController : ControllerBase
 {
     // A replay (same Idempotency-Key, same body) returns the original transfer with 201 again,
     // so the client sees the same response it would have got the first time.
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.MoneyMovement)]
     [ProducesResponseType<TransferResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]

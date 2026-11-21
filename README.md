@@ -90,7 +90,7 @@ Secondary for this project, possible later:
 **Testing**
 - [x] Test projects (xUnit v3 + NSubstitute) with a first example each
 - [x] Domain unit tests
-- [ ] Handler unit tests
+- [x] Handler unit tests
 - [ ] API integration tests (Testcontainers)
 - [ ] Architecture tests
 
@@ -101,7 +101,7 @@ Secondary for this project, possible later:
 - [ ] Exchange rate caching
 - [ ] Domain events + transactional outbox
 - [ ] Batch transfers with background jobs
-- [ ] Rate limiting
+- [x] Rate limiting
 - [ ] OpenTelemetry tracing
 - [x] Authentication: ASP.NET Core Identity, register / login / refresh at `/api/auth` (bearer tokens)
 - [x] Sign-in required by default (fallback policy); health, OpenAPI and register/login stay public

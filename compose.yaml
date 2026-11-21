@@ -58,6 +58,8 @@ services:
       ConnectionStrings__PulseWallet: "Server=sqlserver,1433;Database=PulseWallet;User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
       # Where traces, metrics and logs go (OTLP over gRPC). "aspire-dashboard" is the service name below.
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://aspire-dashboard:18889"
+      # The only proxy whose X-Forwarded-For the API believes: the web container's fixed address below.
+      ForwardedHeaders__KnownProxies__0: "172.28.5.10"
     ports:
       - "5147:8080"
     depends_on:
@@ -82,6 +84,18 @@ services:
       - "4200:8080"
     depends_on:
       - api   # nginx resolves the "api" host name at startup and exits if it doesn't exist yet
+    networks:
+      default:
+        # Fixed, so the API can trust X-Forwarded-For from exactly this address (ForwardedHeaders__KnownProxies__0).
+        ipv4_address: 172.28.5.10
 
 volumes:
   sqlserver-data:
+
+networks:
+  default:
+    # An explicit subnet, needed for the fixed address above. Docker's gateway (172.28.5.1) is what requests to
+    # the published ports appear to come from, which is why only nginx's single address is trusted, not the subnet.
+    ipam:
+      config:
+        - subnet: 172.28.5.0/24
