@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using PulseWallet.Application.Abstractions;
 using PulseWallet.Application.ExchangeRates;
 using PulseWallet.Application.Ledger;
+using PulseWallet.Application.Telemetry;
 using PulseWallet.Application.Wallets;
 using PulseWallet.Domain.Ledger;
 using PulseWallet.Domain.Shared;
@@ -43,6 +45,9 @@ public sealed partial class CreateTransferHandler
 
     public async Task<TransferDetails> HandleAsync(CreateTransferCommand command, CancellationToken cancellationToken)
     {
+        using Activity? activity = PulseWalletTelemetry.ActivitySource.StartActivity("CreateTransfer");
+        activity?.SetTag(PulseWalletTags.WalletId, command.SourceWalletId);
+
         Money amount = Money.Create(command.Amount, command.Currency);
 
         // You can only send from your own wallet, but to anyone's. Checked before the replay, for the same
@@ -59,11 +64,14 @@ public sealed partial class CreateTransferHandler
                 throw new IdempotencyKeyReusedException(command.IdempotencyKey);
             }
 
+            activity?.SetTag(PulseWalletTags.IdempotentReplay, true);
+            activity?.SetTag(PulseWalletTags.TransferId, existing.Id);
             LogTransferReplayed(command.IdempotencyKey, existing.Id);
             return await GetDetailsAsync(existing.Id, command.UserId, cancellationToken);
         }
 
         Wallet destination = await GetWalletAsync(command.DestinationWalletId, cancellationToken);
+        activity?.SetTag(PulseWalletTags.CrossCurrency, source.Currency != destination.Currency);
 
         // Fetched before anything is written: with retries the call can take seconds, and no transaction is open yet
         // (SaveChanges opens the only one), so nothing is locked meanwhile. If a wallet changes during the wait,
@@ -84,6 +92,7 @@ public sealed partial class CreateTransferHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         Transfer transfer = execution.Transfer;
+        activity?.SetTag(PulseWalletTags.TransferId, transfer.Id);
         LogTransferCreated(
             transfer.Id, transfer.Amount.Amount, transfer.Amount.Currency,
             transfer.ReceivedAmount.Amount, transfer.ReceivedAmount.Currency, transfer.Rate, source.Id, destination.Id);

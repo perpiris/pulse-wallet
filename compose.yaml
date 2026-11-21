@@ -56,11 +56,24 @@ services:
       # Overrides ConnectionStrings:PulseWallet. "sqlserver" is the service name above, resolved by Docker's network.
       # TrustServerCertificate is needed because the dev SQL Server uses a self-signed certificate.
       ConnectionStrings__PulseWallet: "Server=sqlserver,1433;Database=PulseWallet;User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      # Where traces, metrics and logs go (OTLP over gRPC). "aspire-dashboard" is the service name below.
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://aspire-dashboard:18889"
     ports:
       - "5147:8080"
     depends_on:
       sqlserver-init:
         condition: service_completed_successfully
+
+  # Shows traces, metrics and structured logs sent over OTLP. Keeps data in memory only: a restart clears it.
+  # Any OTLP backend could take its place (Jaeger, Elastic, Azure Monitor) without a code change in the API.
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13.0
+    environment:
+      # No login for a local, single-user tool. Never expose it like this outside your machine.
+      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888"   # UI at http://localhost:18888
+      - "4317:18889"    # OTLP gRPC, for the API when it runs from the IDE (see launchSettings.json)
 
   web:
     build:

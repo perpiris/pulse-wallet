@@ -1,6 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using PulseWallet.Application.Abstractions;
 using PulseWallet.Application.Ledger;
+using PulseWallet.Application.Telemetry;
 using PulseWallet.Domain.Ledger;
 using PulseWallet.Domain.Shared;
 using PulseWallet.Domain.Wallets;
@@ -34,6 +36,9 @@ public sealed partial class TopUpWalletHandler
 
     public async Task<WalletDetails> HandleAsync(TopUpWalletCommand command, CancellationToken cancellationToken)
     {
+        using Activity? activity = PulseWalletTelemetry.ActivitySource.StartActivity("TopUpWallet");
+        activity?.SetTag(PulseWalletTags.WalletId, command.WalletId);
+
         Money amount = Money.Create(command.Amount, command.Currency);
 
         // Ownership first, before the replay below: otherwise anyone who knew a wallet id and an old
@@ -50,6 +55,7 @@ public sealed partial class TopUpWalletHandler
                 throw new IdempotencyKeyReusedException(command.IdempotencyKey);
             }
 
+            activity?.SetTag(PulseWalletTags.IdempotentReplay, true);
             LogTopUpReplayed(command.IdempotencyKey, existing.Id);
             return await GetDetailsAsync(command.WalletId, command.UserId, cancellationToken);
         }

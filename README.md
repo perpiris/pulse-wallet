@@ -89,7 +89,7 @@ Secondary for this project, possible later:
 
 **Testing**
 - [x] Test projects (xUnit v3 + NSubstitute) with a first example each
-- [ ] Domain unit tests
+- [x] Domain unit tests
 - [ ] Handler unit tests
 - [ ] API integration tests (Testcontainers)
 - [ ] Architecture tests
@@ -112,12 +112,14 @@ Secondary for this project, possible later:
 - [x] Choose a framework: Angular
 - [x] Angular app (Tailwind, Vitest) served by nginx, started with the rest of the stack by Docker Compose
 - [x] Connect to the API (`/api` proxy, typed API services, ProblemDetails errors)
-- [x] Look up a wallet by ID: balance and latest transactions
+- [x] Login and register (token interceptor with refresh, route guards)
+- [x] My wallets and a page per wallet: balance and latest transactions
 - [x] Light and dark theme, ESLint and Prettier
 - [x] Create wallet (Signal Forms, client checks mirroring the domain rules, API errors shown on the form)
 - [x] History screen (direction and date filters, "Load more" with the keyset cursor)
 - [x] Top up and withdraw (CDK dialog; one `Idempotency-Key` per operation, reused on retry; 422 insufficient funds on the amount)
-- [ ] Send money
+- [x] Send money (dialog on the wallet page; to your own or anyone's wallet by ID; one `Idempotency-Key` per transfer)
+- [ ] Transfer details page
 
 **Optional / future**
 - [x] CI pipeline (GitHub Actions: build, tests, format check)
