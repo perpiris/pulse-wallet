@@ -47,7 +47,7 @@ public static class WebApplicationExtensions
     }
 
     // Before app.Run, so the server only starts taking requests once the rates are in the cache.
-    // If the provider is down this waits for its retries and timeouts (up to about 15 seconds), then starts without the rates.
+    // If the provider is down, this waits for its retries and timeouts (up to about 15 seconds), then starts without the rates.
     public static async Task LoadExchangeRatesAsync(this WebApplication app)
     {
         // The loader is transient (it holds a typed HttpClient) and there's no request yet, so a scope is created for it.

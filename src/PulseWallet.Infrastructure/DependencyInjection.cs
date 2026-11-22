@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using PulseWallet.Application.Abstractions;
 using PulseWallet.Application.ExchangeRates;
 using PulseWallet.Application.Transfers;
@@ -68,6 +69,14 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddSingleton<IExchangeRateProvider, CachedExchangeRateProvider>();
         services.AddTransient<ExchangeRateCacheLoader>();
+
+        TimeSpan refreshInterval = configuration.GetValue<TimeSpan?>("ExchangeRates:RefreshInterval")
+            ?? throw new InvalidOperationException("ExchangeRates:RefreshInterval is not configured.");
+        services.AddHostedService(sp => new ExchangeRateRefreshService(
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            sp.GetRequiredService<TimeProvider>(),
+            refreshInterval,
+            sp.GetRequiredService<ILogger<ExchangeRateRefreshService>>()));
 
         services.AddHttpClient<FrankfurterExchangeRateProvider>(client =>
             {

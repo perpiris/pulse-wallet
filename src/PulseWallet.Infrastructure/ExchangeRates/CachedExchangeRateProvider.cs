@@ -17,7 +17,7 @@ public class CachedExchangeRateProvider : IExchangeRateProvider
     }
 
     // A miss means loading failed for this pair (the provider was down at startup): 503, as before, and
-    // same-currency transfers keep working. Nothing refills the cache yet; a background refresh comes later.
+    // same-currency transfers keep working. ExchangeRateRefreshService tries again on every refresh.
     public Task<ExchangeRate> GetLatestRateAsync(Currency from, Currency to, CancellationToken cancellationToken)
     {
         if (_cache.TryGetValue(ExchangeRateCacheKeys.For(from, to), out ExchangeRate? rate) && rate is not null)
