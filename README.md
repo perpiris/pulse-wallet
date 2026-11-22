@@ -60,6 +60,8 @@ Secondary for this project, possible later:
 
 ## Progress
 
+Every open item links to its [GitHub issue](https://github.com/perpiris/pulse-wallet/issues); add new work there and here together.
+
 **Foundation**
 - [x] Solution structure (Api, Application, Domain, Infrastructure)
 - [x] Central package management and shared build settings
@@ -90,9 +92,12 @@ Secondary for this project, possible later:
 **Testing**
 - [x] Test projects (xUnit v3 + NSubstitute) with a first example each
 - [x] Domain unit tests
-- [x] Handler unit tests
-- [ ] API integration tests (Testcontainers)
-- [ ] Architecture tests
+- [x] Handler unit tests: top-up, withdraw, transfer, history
+- [ ] Handler unit test: create wallet with a friendly name the owner already uses ([#2](https://github.com/perpiris/pulse-wallet/issues/2))
+- [ ] Infrastructure unit tests ([#31](https://github.com/perpiris/pulse-wallet/issues/31))
+- [ ] API integration tests (Testcontainers) ([#8](https://github.com/perpiris/pulse-wallet/issues/8))
+- [ ] Architecture tests ([#9](https://github.com/perpiris/pulse-wallet/issues/9))
+- [ ] End-to-end tests with Playwright ([#25](https://github.com/perpiris/pulse-wallet/issues/25))
 
 **Advanced**
 - [x] Optimistic concurrency (row version on wallets, 409 on conflict) + read committed snapshot isolation
@@ -100,15 +105,21 @@ Secondary for this project, possible later:
 - [x] Resilience for the exchange rate client (timeouts, retries, circuit breaker)
 - [x] Exchange rate caching (loaded at startup, refreshed every hour, saved to the database as a fallback when the provider is down)
 - [x] Stale exchange rates need the sender's confirmation (configurable age limit; 422 with the rate, resend with `acceptedRateDate`)
-- [ ] Domain events + transactional outbox
-- [ ] Batch transfers with background jobs
+- [ ] Domain events + transactional outbox ([#15](https://github.com/perpiris/pulse-wallet/issues/15))
+- [ ] Future-dated transfers with background jobs ([#6](https://github.com/perpiris/pulse-wallet/issues/6))
+- [ ] Delayed withdrawals ([#7](https://github.com/perpiris/pulse-wallet/issues/7))
+- [ ] Batch transfers ([#17](https://github.com/perpiris/pulse-wallet/issues/17))
+- [ ] Reconciliation job: balances vs ledger entries, transfers vs their two entries; report, never fix money automatically ([#16](https://github.com/perpiris/pulse-wallet/issues/16))
+- [ ] Limits and fees ([#18](https://github.com/perpiris/pulse-wallet/issues/18))
+- [ ] Reversals ([#19](https://github.com/perpiris/pulse-wallet/issues/19))
 - [x] Rate limiting (per user or IP, stricter on money-moving endpoints; real client IP behind nginx via forwarded headers)
 - [x] OpenTelemetry: traces, metrics and logs over OTLP, shown in the Aspire Dashboard locally
-- [ ] Business metrics (transfers per minute, failures by reason)
+- [ ] Business metrics (transfers per minute, failures by reason) ([#12](https://github.com/perpiris/pulse-wallet/issues/12))
 - [x] Authentication: ASP.NET Core Identity, register / login / refresh at `/api/auth` (bearer tokens)
 - [x] Sign-in required by default (fallback policy); health, OpenAPI and register/login stay public
 - [x] Wallet ownership: users only see and use the wallets they own (someone else's wallet is a 404)
-- [ ] Roles and permissions (Customer, Admin), seeded; admin endpoints
+- [ ] Roles and permissions (Customer, Admin), seeded; admin endpoints ([#14](https://github.com/perpiris/pulse-wallet/issues/14))
+- [ ] Persist Data Protection keys so sign-ins survive restarts ([#26](https://github.com/perpiris/pulse-wallet/issues/26))
 
 **Frontend**
 - [x] Choose a framework: Angular
@@ -122,11 +133,18 @@ Secondary for this project, possible later:
 - [x] Top up and withdraw (CDK dialog; one `Idempotency-Key` per operation, reused on retry; 422 insufficient funds on the amount)
 - [x] Send money (dialog on the wallet page; to your own or anyone's wallet by ID; one `Idempotency-Key` per transfer)
 - [x] Stale exchange rate warning in the send dialog (old rate, its date and an estimate; send only after ticking "I accept")
-- [ ] Transfer details page
+- [ ] Transfer details page ([#5](https://github.com/perpiris/pulse-wallet/issues/5))
 
 **Optional / future**
 - [x] CI pipeline (GitHub Actions: build, tests, format check)
-- [ ] Cloud deployment
+- [ ] CI for the frontend + path-filtered workflows ([#24](https://github.com/perpiris/pulse-wallet/issues/24))
+- [ ] Require CI checks before merging to master ([#32](https://github.com/perpiris/pulse-wallet/issues/32))
+- [ ] Cloud deployment (Azure, CD) ([#11](https://github.com/perpiris/pulse-wallet/issues/11))
+
+**Tech debt**
+- [ ] Error type URIs and an `X-Trace-Id` response header ([#20](https://github.com/perpiris/pulse-wallet/issues/20))
+- [ ] Top-up and withdraw handlers are almost identical ([#21](https://github.com/perpiris/pulse-wallet/issues/21))
+- [ ] Connection string is read twice ([#22](https://github.com/perpiris/pulse-wallet/issues/22))
 
 ## Architecture
 
