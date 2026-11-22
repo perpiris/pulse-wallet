@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using PulseWallet.Application.Abstractions;
 using PulseWallet.Application.ExchangeRates;
 using PulseWallet.Application.Transfers;
@@ -67,7 +68,20 @@ public static class DependencyInjection
         // so it can be a singleton too. Frankfurter is registered as its concrete type, used only by the loader.
         services.AddMemoryCache();
         services.AddSingleton<IExchangeRateProvider, CachedExchangeRateProvider>();
-        services.AddTransient<ExchangeRateCacheLoader>();
+        services.AddScoped<ExchangeRateCacheLoader>();
+
+        // An Application type, registered here because this is where the exchange-rate settings are read.
+        int maxRateAgeInDays = configuration.GetValue<int?>("ExchangeRates:MaxRateAgeInDays")
+            ?? throw new InvalidOperationException("ExchangeRates:MaxRateAgeInDays is not configured.");
+        services.AddSingleton(sp => new ExchangeRateAgePolicy(sp.GetRequiredService<TimeProvider>(), maxRateAgeInDays));
+
+        TimeSpan refreshInterval = configuration.GetValue<TimeSpan?>("ExchangeRates:RefreshInterval")
+            ?? throw new InvalidOperationException("ExchangeRates:RefreshInterval is not configured.");
+        services.AddHostedService(sp => new ExchangeRateRefreshService(
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            sp.GetRequiredService<TimeProvider>(),
+            refreshInterval,
+            sp.GetRequiredService<ILogger<ExchangeRateRefreshService>>()));
 
         services.AddHttpClient<FrankfurterExchangeRateProvider>(client =>
             {

@@ -1,6 +1,6 @@
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   FieldTree,
   form,
@@ -14,7 +14,7 @@ import { firstValueFrom } from 'rxjs';
 import { ApiError } from '../../core/api-error';
 import { amountRules } from '../../wallets/amount-rules';
 import { WalletDetails, WalletSummary } from '../../wallets/wallet.models';
-import { TransferDetails } from '../transfer.models';
+import { StaleExchangeRate, staleExchangeRateOf, TransferDetails } from '../transfer.models';
 import { TransfersApi } from '../transfers-api';
 
 export interface SendMoneyDialogData {
@@ -37,7 +37,7 @@ const WALLET_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 // Sends money from one wallet to another: one of your own, or anyone's by pasting their wallet ID.
 @Component({
   selector: 'app-send-money-dialog',
-  imports: [DecimalPipe, FormRoot, FormField],
+  imports: [DatePipe, DecimalPipe, FormRoot, FormField],
   templateUrl: './send-money-dialog.html',
   host: {
     class:
@@ -95,10 +95,51 @@ export class SendMoneyDialog {
   // same transfer can be submitted again (see money-movement-dialog.ts for why).
   protected readonly submitError = signal<string | undefined>(undefined);
 
+  // Where the money would go, derived from the form: computed() re-evaluates whenever the model signal changes.
+  private readonly destinationId = computed(() => {
+    const { recipient, ownWalletId, walletId } = this.model();
+    return recipient === 'mine' ? ownWalletId : walletId.trim();
+  });
+
+  // Set when the API answered 422 "Exchange rate is stale". Remembers which destination it was for:
+  // the rate depends on the destination wallet's currency, so it only applies while that wallet is still chosen.
+  private readonly staleRate = signal<
+    { destinationId: string; rate: StaleExchangeRate } | undefined
+  >(undefined);
+
+  // The warning the template shows: the stale rate, but only for the destination it was returned for.
+  protected readonly pendingStaleRate = computed(() => {
+    const stale = this.staleRate();
+    return stale?.destinationId === this.destinationId() ? stale.rate : undefined;
+  });
+
+  // The user's tick in the checkbox. Not part of the form model: it isn't data for the request,
+  // it only decides whether the request carries acceptedRateDate.
+  protected readonly acceptStaleRate = signal(false);
+
+  // A rough preview for the warning; the API does the real conversion (rounding down to cents, like here).
+  protected readonly receivedEstimate = computed(() => {
+    const rate = this.pendingStaleRate();
+    const amount = Number(this.model().amount);
+    if (rate === undefined || !Number.isFinite(amount) || amount <= 0) {
+      return undefined;
+    }
+    return Math.floor(amount * rate.rate * 100) / 100;
+  });
+
+  // Send stays disabled until the user has agreed to the stale rate.
+  protected readonly waitingForAcceptance = computed(
+    () => this.pendingStaleRate() !== undefined && !this.acceptStaleRate(),
+  );
+
+  protected onAcceptStaleRateChange(event: Event): void {
+    this.acceptStaleRate.set((event.target as HTMLInputElement).checked);
+  }
+
   private async send(field: FieldTree<SendMoneyModel>): Promise<TreeValidationResult> {
     this.submitError.set(undefined);
-    const { recipient, ownWalletId, walletId } = this.model();
-    const destinationId = recipient === 'mine' ? ownWalletId : walletId.trim();
+    const { recipient } = this.model();
+    const destinationId = this.destinationId();
     const amount = Number(this.model().amount);
 
     if (this.lastAttempt?.destinationId !== destinationId || this.lastAttempt.amount !== amount) {
@@ -106,11 +147,14 @@ export class SendMoneyDialog {
     }
 
     const { source } = this.data;
+    // The same idempotency key is reused for the resend after accepting: the rejected first attempt created nothing.
+    const acceptedRate = this.acceptStaleRate() ? this.pendingStaleRate() : undefined;
     const request = {
       sourceWalletId: source.id,
       destinationWalletId: destinationId,
       amount,
       currency: source.currency,
+      acceptedRateDate: acceptedRate?.date,
     };
 
     try {
@@ -121,6 +165,14 @@ export class SendMoneyDialog {
     } catch (error) {
       const apiError = ApiError.of(error);
       const recipientField = recipient === 'mine' ? field.ownWalletId : field.walletId;
+      // Checked before the other 422s: it's not an error on the amount, but a question for the user.
+      // Untick the box, so a newer stale rate (if the API returned one) has to be accepted again.
+      const staleRate = staleExchangeRateOf(apiError);
+      if (staleRate !== undefined) {
+        this.staleRate.set({ destinationId, rate: staleRate });
+        this.acceptStaleRate.set(false);
+        return undefined;
+      }
       // 422: insufficient funds → the amount. 404: no such destination wallet. 400: a domain rule about the pair
       // (different currency, same wallet) → the recipient. Anything else isn't about a field.
       if (apiError.status === 422) {

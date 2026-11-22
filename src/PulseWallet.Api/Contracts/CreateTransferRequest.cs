@@ -10,8 +10,11 @@ public record CreateTransferRequest
     public required decimal Amount { get; init; }
     public required Currency Currency { get; init; }
 
+    // Only sent after a 422 "Exchange rate is stale": the date from that response, meaning "I accept this rate".
+    public DateOnly? AcceptedRateDate { get; init; }
+
     public CreateTransferCommand ToCommand(Guid userId, Guid idempotencyKey)
     {
-        return new CreateTransferCommand(userId, SourceWalletId, DestinationWalletId, Amount, Currency, idempotencyKey);
+        return new CreateTransferCommand(userId, SourceWalletId, DestinationWalletId, Amount, Currency, idempotencyKey, AcceptedRateDate);
     }
 }

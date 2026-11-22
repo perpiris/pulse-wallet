@@ -168,7 +168,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **Ownership (resource-based authorization):** a wallet has an `OwnerId` (a foreign key to `AspNetUsers`, unknown to the domain). Commands load the wallet and check `IsOwnedBy` before anything else, including the idempotency replay; reads filter by owner in the SQL. Someone else's wallet or transfer gets the same 404 as a missing one, so ids can't be probed. A transfer can go to anyone's wallet, and both sides can see it
 - **Idempotency:** money-moving requests require an `Idempotency-Key` header. The key is stored on the ledger entry with a unique index per wallet, in the same transaction as the money change. Same key and same request → the result is replayed and no money moves; same key, different request → 422. A unique-index race (two requests with the same key, or the same wallet name for one owner, at the same moment) returns 409, and the retry gets the replay
 - **Read committed snapshot isolation (RCSI)** on the database: reads use the last committed row version instead of waiting for locks, so a read can't deadlock with a concurrent update
-- **Exchange rates:** `IExchangeRateProvider` in Application, implemented in Infrastructure as a typed `HttpClient` for [Frankfurter](https://frankfurter.dev/) (ECB rates, published once per working day; no API key). An `ExchangeRate` keeps up to 8 decimals and the date the rate was published. Resilience is hand-written as `DelegatingHandler`s in the client's pipeline (no Polly), tuned for a user waiting on a transfer: retry (GET only, 2 retries with exponential backoff and jitter) → circuit breaker (opens after 5 failures in a row for 30s, then lets one trial call through) → 2s per try, with `HttpClient.Timeout` capping the whole call at 8s. The breaker's state is a keyed singleton, because the factory recycles handlers. Rates are loaded into `IMemoryCache` at startup (one call per base currency) and transfers read only from the cache (`CachedExchangeRateProvider`), so no request waits on Frankfurter. If a rate couldn't be loaded, the API returns 503 and same-currency transfers keep working
+- **Exchange rates:** `IExchangeRateProvider` in Application, implemented in Infrastructure as a typed `HttpClient` for [Frankfurter](https://frankfurter.dev/) (ECB rates, published once per working day; no API key). An `ExchangeRate` keeps up to 8 decimals and the date the rate was published. Resilience is hand-written as `DelegatingHandler`s in the client's pipeline (no Polly), tuned for a user waiting on a transfer: retry (GET only, 2 retries with exponential backoff and jitter) → circuit breaker (opens after 5 failures in a row for 30s, then lets one trial call through) → 2s per try, with `HttpClient.Timeout` capping the whole call at 8s. The breaker's state is a keyed singleton, because the factory recycles handlers. Rates are loaded into `IMemoryCache` at startup (one call per base currency) and transfers read only from the cache (`CachedExchangeRateProvider`), so no request waits on Frankfurter; `ExchangeRateRefreshService` (a `BackgroundService` with a `PeriodicTimer`) reloads them every hour. Every successful fetch is also saved to an `ExchangeRates` table (one row per pair); when Frankfurter is down, the saved rates fill the cache instead, so a restart during an outage still has rates. If a rate couldn't be loaded, the API returns 503 and same-currency transfers keep working
 - **Exceptions for broken business rules**, mapped to ProblemDetails (RFC 9457) in one place
 - **`TimeProvider`** for the current time, so time-dependent logic is testable
 - **Enums travel as text** in JSON (`"EUR"`, never `0`)
@@ -219,6 +219,23 @@ Store the connection string as a user secret, pointing at the SQL Server contain
 ```bash
 dotnet user-secrets set "ConnectionStrings:PulseWallet" "Server=localhost,1433;Database=PulseWallet;User Id=sa;Password=<your password>;Encrypt=True;TrustServerCertificate=True" --project src/PulseWallet.Api
 ```
+
+### Test coverage
+With [coverlet.console](https://github.com/coverlet-coverage/coverlet) (`dotnet tool install -g coverlet.console`), which prints a coverage table per assembly in the terminal. It runs the compiled tests, so build first. Each test project is one run: the Domain run writes `coverage.json`, and the Application run merges into it, so the second table covers both.
+
+```bash
+dotnet build
+
+coverlet tests/PulseWallet.Domain.UnitTests/bin/Debug/net10.0/PulseWallet.Domain.UnitTests.dll --target dotnet --targetargs "tests/PulseWallet.Domain.UnitTests/bin/Debug/net10.0/PulseWallet.Domain.UnitTests.dll" --include "[PulseWallet.*]*" --exclude "[*.UnitTests]*" --exclude-by-attribute GeneratedCodeAttribute --output TestResults/coverlet/coverage.json
+
+coverlet tests/PulseWallet.Application.UnitTests/bin/Debug/net10.0/PulseWallet.Application.UnitTests.dll --target dotnet --targetargs "tests/PulseWallet.Application.UnitTests/bin/Debug/net10.0/PulseWallet.Application.UnitTests.dll" --include "[PulseWallet.*]*" --exclude "[*.UnitTests]*" --exclude-by-attribute GeneratedCodeAttribute --merge-with TestResults/coverlet/coverage.json --output TestResults/coverlet/
+```
+
+- `--include` / `--exclude`: measure only our own assemblies, not the test projects.
+- `--exclude-by-attribute GeneratedCodeAttribute`: leaves out source-generated code such as `[LoggerMessage]` methods, which the tests never run (they use `NullLogger`).
+- `--target dotnet`: runs the xUnit v3 test DLL through `dotnet`; coverlet can't start the test `.exe` from a relative path.
+
+The test projects also reference `Microsoft.Testing.Extensions.CodeCoverage`, so `dotnet test --coverage --coverage-output-format cobertura` writes Cobertura files to `TestResults/` (for CI or a report tool) without installing anything.
 
 ### Working on the frontend
 **Prerequisites:** Node.js 24 and the Angular CLI (`npm install -g @angular/cli`). The app's structure and an Angular 15–17 → 22 cheat sheet are in [web/README.md](web/README.md).

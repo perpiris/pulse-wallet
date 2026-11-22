@@ -8,4 +8,6 @@ public record CreateTransferCommand(
     Guid DestinationWalletId,
     decimal Amount,
     Currency Currency,
-    Guid IdempotencyKey);
+    Guid IdempotencyKey,
+    // The publish date of a stale rate the sender agreed to; null when they haven't seen a warning.
+    DateOnly? AcceptedRateDate);

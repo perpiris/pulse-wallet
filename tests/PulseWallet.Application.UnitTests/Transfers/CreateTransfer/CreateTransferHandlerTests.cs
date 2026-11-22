@@ -16,6 +16,8 @@ public sealed class CreateTransferHandlerTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 21, 10, 0, 0, TimeSpan.Zero);
     private static readonly DateOnly RateDate = new(2026, 11, 20);
+    private static readonly DateOnly StaleRateDate = new(2026, 11, 14);
+    private const int MaxRateAgeInDays = 4;
     private static readonly Guid OwnerId = Guid.CreateVersion7();
 
     private readonly ITransferRepository _transferRepository = Substitute.For<ITransferRepository>();
@@ -54,6 +56,7 @@ public sealed class CreateTransferHandlerTests
             _unitOfWork,
             _transferQueries,
             _exchangeRateProvider,
+            new ExchangeRateAgePolicy(_timeProvider, MaxRateAgeInDays),
             _timeProvider,
             NullLogger<CreateTransferHandler>.Instance);
     }
@@ -63,7 +66,7 @@ public sealed class CreateTransferHandlerTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         CreateTransferCommand command = new CreateTransferCommand(
-            OwnerId, _source.Id, _euroDestination.Id, 30m, Currency.EUR, Guid.NewGuid());
+            OwnerId, _source.Id, _euroDestination.Id, 30m, Currency.EUR, Guid.NewGuid(), null);
 
         Transfer? added = null;
         _transferRepository.Add(Arg.Do<Transfer>(transfer => added = transfer));
@@ -89,7 +92,7 @@ public sealed class CreateTransferHandlerTests
             .GetLatestRateAsync(Currency.EUR, Currency.USD, cancellationToken)
             .Returns(ExchangeRate.Create(Currency.EUR, Currency.USD, 1.1m, RateDate));
         CreateTransferCommand command = new CreateTransferCommand(
-            OwnerId, _source.Id, _dollarDestination.Id, 10m, Currency.EUR, Guid.NewGuid());
+            OwnerId, _source.Id, _dollarDestination.Id, 10m, Currency.EUR, Guid.NewGuid(), null);
 
         await _handler.HandleAsync(command, cancellationToken);
 
@@ -106,7 +109,7 @@ public sealed class CreateTransferHandlerTests
             .GetLatestRateAsync(Currency.EUR, Currency.USD, cancellationToken)
             .Returns<ExchangeRate>(_ => throw new ExchangeRateUnavailableException(Currency.EUR, Currency.USD));
         CreateTransferCommand command = new CreateTransferCommand(
-            OwnerId, _source.Id, _dollarDestination.Id, 10m, Currency.EUR, Guid.NewGuid());
+            OwnerId, _source.Id, _dollarDestination.Id, 10m, Currency.EUR, Guid.NewGuid(), null);
 
         await Assert.ThrowsAsync<ExchangeRateUnavailableException>(() => _handler.HandleAsync(command, cancellationToken));
 
@@ -124,7 +127,7 @@ public sealed class CreateTransferHandlerTests
             _source, _euroDestination, Money.Create(30m, Currency.EUR), null, idempotencyKey, Now).Transfer;
         _transferRepository.GetByIdempotencyKeyAsync(_source.Id, idempotencyKey, cancellationToken).Returns(existing);
         CreateTransferCommand command = new CreateTransferCommand(
-            OwnerId, _source.Id, _euroDestination.Id, 30m, Currency.EUR, idempotencyKey);
+            OwnerId, _source.Id, _euroDestination.Id, 30m, Currency.EUR, idempotencyKey, null);
 
         TransferDetails result = await _handler.HandleAsync(command, cancellationToken);
 
@@ -143,7 +146,7 @@ public sealed class CreateTransferHandlerTests
             _source, _euroDestination, Money.Create(30m, Currency.EUR), null, idempotencyKey, Now).Transfer;
         _transferRepository.GetByIdempotencyKeyAsync(_source.Id, idempotencyKey, cancellationToken).Returns(existing);
         CreateTransferCommand command = new CreateTransferCommand(
-            OwnerId, _source.Id, _dollarDestination.Id, 30m, Currency.EUR, idempotencyKey);
+            OwnerId, _source.Id, _dollarDestination.Id, 30m, Currency.EUR, idempotencyKey, null);
 
         await Assert.ThrowsAsync<IdempotencyKeyReusedException>(() => _handler.HandleAsync(command, cancellationToken));
 
@@ -155,7 +158,7 @@ public sealed class CreateTransferHandlerTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         CreateTransferCommand command = new CreateTransferCommand(
-            OwnerId, _euroDestination.Id, _source.Id, 10m, Currency.EUR, Guid.NewGuid());
+            OwnerId, _euroDestination.Id, _source.Id, 10m, Currency.EUR, Guid.NewGuid(), null);
 
         await Assert.ThrowsAsync<WalletNotFoundException>(() => _handler.HandleAsync(command, cancellationToken));
 
@@ -167,11 +170,61 @@ public sealed class CreateTransferHandlerTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         CreateTransferCommand command = new CreateTransferCommand(
-            OwnerId, _source.Id, Guid.CreateVersion7(), 10m, Currency.EUR, Guid.NewGuid());
+            OwnerId, _source.Id, Guid.CreateVersion7(), 10m, Currency.EUR, Guid.NewGuid(), null);
 
         await Assert.ThrowsAsync<WalletNotFoundException>(() => _handler.HandleAsync(command, cancellationToken));
 
         Assert.Equal(100m, _source.Balance);
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_StaleRateNotAccepted_ThrowsWithTheRateAndSavesNothing()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        ExchangeRate staleRate = ExchangeRate.Create(Currency.EUR, Currency.USD, 1.05m, StaleRateDate);
+        _exchangeRateProvider.GetLatestRateAsync(Currency.EUR, Currency.USD, cancellationToken).Returns(staleRate);
+        CreateTransferCommand command = new CreateTransferCommand(
+            OwnerId, _source.Id, _dollarDestination.Id, 10m, Currency.EUR, Guid.NewGuid(), null);
+
+        StaleExchangeRateException exception = await Assert.ThrowsAsync<StaleExchangeRateException>(
+            () => _handler.HandleAsync(command, cancellationToken));
+
+        Assert.Same(staleRate, exception.Rate);
+        Assert.Equal(100m, _source.Balance);
+        _transferRepository.DidNotReceive().Add(Arg.Any<Transfer>());
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_StaleRateAcceptedForAnOlderDate_StillThrows()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        _exchangeRateProvider
+            .GetLatestRateAsync(Currency.EUR, Currency.USD, cancellationToken)
+            .Returns(ExchangeRate.Create(Currency.EUR, Currency.USD, 1.05m, StaleRateDate));
+        CreateTransferCommand command = new CreateTransferCommand(
+            OwnerId, _source.Id, _dollarDestination.Id, 10m, Currency.EUR, Guid.NewGuid(), StaleRateDate.AddDays(-1));
+
+        await Assert.ThrowsAsync<StaleExchangeRateException>(() => _handler.HandleAsync(command, cancellationToken));
+
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_StaleRateAcceptedWithItsDate_SendsAtThatRate()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        _exchangeRateProvider
+            .GetLatestRateAsync(Currency.EUR, Currency.USD, cancellationToken)
+            .Returns(ExchangeRate.Create(Currency.EUR, Currency.USD, 1.05m, StaleRateDate));
+        CreateTransferCommand command = new CreateTransferCommand(
+            OwnerId, _source.Id, _dollarDestination.Id, 10m, Currency.EUR, Guid.NewGuid(), StaleRateDate);
+
+        await _handler.HandleAsync(command, cancellationToken);
+
+        Assert.Equal(10.50m, _dollarDestination.Balance);
+        _transferRepository.Received(1).Add(Arg.Is<Transfer>(transfer => transfer.RateDate == StaleRateDate));
+        await _unitOfWork.Received(1).SaveChangesAsync(cancellationToken);
     }
 }

@@ -20,6 +20,7 @@ public sealed partial class CreateTransferHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITransferQueries _transferQueries;
     private readonly IExchangeRateProvider _exchangeRateProvider;
+    private readonly ExchangeRateAgePolicy _exchangeRateAgePolicy;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<CreateTransferHandler> _logger;
 
@@ -30,6 +31,7 @@ public sealed partial class CreateTransferHandler
         IUnitOfWork unitOfWork,
         ITransferQueries transferQueries,
         IExchangeRateProvider exchangeRateProvider,
+        ExchangeRateAgePolicy exchangeRateAgePolicy,
         TimeProvider timeProvider,
         ILogger<CreateTransferHandler> logger)
     {
@@ -39,6 +41,7 @@ public sealed partial class CreateTransferHandler
         _unitOfWork = unitOfWork;
         _transferQueries = transferQueries;
         _exchangeRateProvider = exchangeRateProvider;
+        _exchangeRateAgePolicy = exchangeRateAgePolicy;
         _timeProvider = timeProvider;
         _logger = logger;
     }
@@ -79,6 +82,14 @@ public sealed partial class CreateTransferHandler
         ExchangeRate? rate = source.Currency == destination.Currency
             ? null
             : await _exchangeRateProvider.GetLatestRateAsync(source.Currency, destination.Currency, cancellationToken);
+
+        // A stale rate is only used once the sender has seen it: the first attempt gets a 422 carrying the rate,
+        // and the client sends again with that rate's date. Matching the date, not just a "yes" flag, means the
+        // agreement covers exactly the rate they saw; if a newer one arrived meanwhile, it's fresh and needs none.
+        if (rate is not null && _exchangeRateAgePolicy.IsStale(rate) && command.AcceptedRateDate != rate.Date)
+        {
+            throw new StaleExchangeRateException(rate, _exchangeRateAgePolicy.MaxAgeInDays);
+        }
 
         TransferExecution execution = Transfer.Execute(
             source, destination, amount, rate, command.IdempotencyKey, _timeProvider.GetUtcNow());
