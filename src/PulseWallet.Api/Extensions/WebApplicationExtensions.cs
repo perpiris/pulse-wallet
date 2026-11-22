@@ -50,7 +50,7 @@ public static class WebApplicationExtensions
     // If the provider is down, this waits for its retries and timeouts (up to about 15 seconds), then starts without the rates.
     public static async Task LoadExchangeRatesAsync(this WebApplication app)
     {
-        // The loader is transient (it holds a typed HttpClient) and there's no request yet, so a scope is created for it.
+        // The loader is scoped (it uses the DbContext and a typed HttpClient) and there's no request yet, so a scope is created for it.
         await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
         ExchangeRateCacheLoader loader = scope.ServiceProvider.GetRequiredService<ExchangeRateCacheLoader>();
         await loader.LoadAsync(app.Lifetime.ApplicationStopping);

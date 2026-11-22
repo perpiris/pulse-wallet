@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -43,6 +44,7 @@ public partial class GlobalExceptionHandler : IExceptionHandler
         {
             InsufficientFundsException => (StatusCodes.Status422UnprocessableEntity, "Insufficient funds"),
             IdempotencyKeyReusedException => (StatusCodes.Status422UnprocessableEntity, "Idempotency key reused"),
+            StaleExchangeRateException => (StatusCodes.Status422UnprocessableEntity, "Exchange rate is stale"),
             DomainException => (StatusCodes.Status400BadRequest, "Invalid request"),
             WalletNotFoundException => (StatusCodes.Status404NotFound, "Wallet not found"),
             TransferNotFoundException => (StatusCodes.Status404NotFound, "Transfer not found"),
@@ -71,7 +73,7 @@ public partial class GlobalExceptionHandler : IExceptionHandler
 
         httpContext.Response.StatusCode = statusCode;
 
-        return await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        ProblemDetailsContext context = new ProblemDetailsContext
         {
             HttpContext = httpContext,
             Exception = exception,
@@ -81,7 +83,22 @@ public partial class GlobalExceptionHandler : IExceptionHandler
                 Title = title,
                 Detail = detail
             }
-        });
+        };
+
+        // The client needs the rate itself to show the warning and to send its date back as AcceptedRateDate.
+        // Plain strings and numbers: ProblemDetails extensions don't go through the controllers' enum converter.
+        if (exception is StaleExchangeRateException stale)
+        {
+            context.ProblemDetails.Extensions["exchangeRate"] = new Dictionary<string, object>
+            {
+                ["from"] = stale.Rate.From.ToString(),
+                ["to"] = stale.Rate.To.ToString(),
+                ["rate"] = stale.Rate.Rate,
+                ["date"] = stale.Rate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            };
+        }
+
+        return await _problemDetailsService.TryWriteAsync(context);
     }
 
     private static string GetDetail(Exception exception, int statusCode)

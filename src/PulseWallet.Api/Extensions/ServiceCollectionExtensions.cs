@@ -27,6 +27,12 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
+        // WebApplication.CreateBuilder registers the default providers (Console, Debug, EventSource, EventLog).
+        // writeToProviders below hands every event to all registered providers, so the default Console provider
+        // would print each line a second time next to Serilog's own console sink. Removed here, before
+        // AddOpenTelemetryTracing adds OpenTelemetry's provider, which is the only one that should receive them.
+        services.AddLogging(logging => logging.ClearProviders());
+
         // Levels, overrides and properties come from appsettings; the console format is chosen here.
         // (Configuration merges WriteTo arrays by index, so overriding the sink per environment in
         // appsettings would hand Serilog both a formatter and a theme for the same sink.)

@@ -309,6 +309,31 @@ namespace PulseWallet.Infrastructure.Persistence.Migrations
                     b.ToTable("Wallets", (string)null);
                 });
 
+            modelBuilder.Entity("PulseWallet.Infrastructure.ExchangeRates.SavedExchangeRate", b =>
+                {
+                    b.Property<string>("From")
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("To")
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("FetchedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.HasKey("From", "To");
+
+                    b.ToTable("ExchangeRates", (string)null);
+                });
+
             modelBuilder.Entity("PulseWallet.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")

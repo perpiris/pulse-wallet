@@ -7,6 +7,9 @@ interface ProblemDetails {
   detail?: string;
   status?: number;
   errors?: Record<string, string[]>;
+  // An index signature: any other property is allowed too. The API adds its own extension members this way,
+  // such as `exchangeRate` on a 422 "Exchange rate is stale".
+  [extension: string]: unknown;
 }
 
 // The one error type the app works with. `readonly status: number` in the constructor is a parameter
@@ -17,6 +20,9 @@ export class ApiError extends Error {
     readonly title: string,
     readonly detail: string,
     readonly fieldErrors: Record<string, string[]> = {},
+    // The whole ProblemDetails body, so a feature can read an extension member it knows about.
+    // Typed `unknown` values: the feature checks the shape before using it (see staleExchangeRateOf).
+    readonly problem: Readonly<Record<string, unknown>> = {},
   ) {
     super(detail);
   }
@@ -48,6 +54,7 @@ export class ApiError extends Error {
       problem?.title ?? response.statusText,
       problem?.detail ?? 'Something went wrong. Please try again.',
       problem?.errors ?? {},
+      problem ?? {},
     );
   }
 }

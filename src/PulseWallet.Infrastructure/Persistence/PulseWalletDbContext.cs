@@ -5,6 +5,7 @@ using PulseWallet.Application.Abstractions;
 using PulseWallet.Domain.Ledger;
 using PulseWallet.Domain.Transfers;
 using PulseWallet.Domain.Wallets;
+using PulseWallet.Infrastructure.ExchangeRates;
 using PulseWallet.Infrastructure.Identity;
 
 namespace PulseWallet.Infrastructure.Persistence;
@@ -20,6 +21,7 @@ public class PulseWalletDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Wallet> Wallets => Set<Wallet>();
     public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
     public DbSet<Transfer> Transfers => Set<Transfer>();
+    public DbSet<SavedExchangeRate> ExchangeRates => Set<SavedExchangeRate>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

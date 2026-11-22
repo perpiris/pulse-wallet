@@ -36,8 +36,8 @@ public sealed partial class ExchangeRateRefreshService : BackgroundService
         {
             try
             {
-                // A hosted service is a singleton, while the loader holds a typed HttpClient (transient):
-                // a scope per run gets a fresh one each time, so DNS changes are picked up.
+                // A hosted service is a singleton, while the loader is scoped (DbContext, typed HttpClient):
+                // a scope per run gets a fresh context and client each time.
                 await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
                 ExchangeRateCacheLoader loader = scope.ServiceProvider.GetRequiredService<ExchangeRateCacheLoader>();
                 await loader.LoadAsync(stoppingToken);

@@ -68,7 +68,12 @@ public static class DependencyInjection
         // so it can be a singleton too. Frankfurter is registered as its concrete type, used only by the loader.
         services.AddMemoryCache();
         services.AddSingleton<IExchangeRateProvider, CachedExchangeRateProvider>();
-        services.AddTransient<ExchangeRateCacheLoader>();
+        services.AddScoped<ExchangeRateCacheLoader>();
+
+        // An Application type, registered here because this is where the exchange-rate settings are read.
+        int maxRateAgeInDays = configuration.GetValue<int?>("ExchangeRates:MaxRateAgeInDays")
+            ?? throw new InvalidOperationException("ExchangeRates:MaxRateAgeInDays is not configured.");
+        services.AddSingleton(sp => new ExchangeRateAgePolicy(sp.GetRequiredService<TimeProvider>(), maxRateAgeInDays));
 
         TimeSpan refreshInterval = configuration.GetValue<TimeSpan?>("ExchangeRates:RefreshInterval")
             ?? throw new InvalidOperationException("ExchangeRates:RefreshInterval is not configured.");
