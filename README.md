@@ -32,7 +32,7 @@ These are the problems real payment systems have to solve, and the main things t
 - **Idempotency:** an `Idempotency-Key` header on money-moving requests, so a retried request never transfers money twice
 - **Concurrency control:** optimistic concurrency on wallets, so two simultaneous withdrawals can't overdraw a balance
 - **Resilience:** timeouts, retries with backoff and circuit breakers around external calls (the exchange rate API)
-- **Caching:** exchange rates cached for a short time, never used once they're too old
+- **Caching:** exchange rates cached in memory and refreshed in the background, with the database as a fallback; a rate that's too old is only used when the sender agrees to it
 - **Domain events and the transactional outbox:** "money received" style events that are never lost, even if the app crashes after saving
 - **Background jobs:** batch transfers and other long-running work processed outside the HTTP request
 - **Ledger:** every balance change recorded as an append-only transaction, so balances can be audited and rebuilt
@@ -98,11 +98,13 @@ Secondary for this project, possible later:
 - [x] Optimistic concurrency (row version on wallets, 409 on conflict) + read committed snapshot isolation
 - [x] Idempotency keys (`Idempotency-Key` header on top-up, withdraw and transfers: a retry replays, a reused key is a 422)
 - [x] Resilience for the exchange rate client (timeouts, retries, circuit breaker)
-- [ ] Exchange rate caching
+- [x] Exchange rate caching (loaded at startup, refreshed every hour, saved to the database as a fallback when the provider is down)
+- [x] Stale exchange rates need the sender's confirmation (configurable age limit; 422 with the rate, resend with `acceptedRateDate`)
 - [ ] Domain events + transactional outbox
 - [ ] Batch transfers with background jobs
-- [x] Rate limiting
-- [ ] OpenTelemetry tracing
+- [x] Rate limiting (per user or IP, stricter on money-moving endpoints; real client IP behind nginx via forwarded headers)
+- [x] OpenTelemetry: traces, metrics and logs over OTLP, shown in the Aspire Dashboard locally
+- [ ] Business metrics (transfers per minute, failures by reason)
 - [x] Authentication: ASP.NET Core Identity, register / login / refresh at `/api/auth` (bearer tokens)
 - [x] Sign-in required by default (fallback policy); health, OpenAPI and register/login stay public
 - [x] Wallet ownership: users only see and use the wallets they own (someone else's wallet is a 404)
@@ -119,6 +121,7 @@ Secondary for this project, possible later:
 - [x] History screen (direction and date filters, "Load more" with the keyset cursor)
 - [x] Top up and withdraw (CDK dialog; one `Idempotency-Key` per operation, reused on retry; 422 insufficient funds on the amount)
 - [x] Send money (dialog on the wallet page; to your own or anyone's wallet by ID; one `Idempotency-Key` per transfer)
+- [x] Stale exchange rate warning in the send dialog (old rate, its date and an estimate; send only after ticking "I accept")
 - [ ] Transfer details page
 
 **Optional / future**
@@ -168,7 +171,9 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 - **Ownership (resource-based authorization):** a wallet has an `OwnerId` (a foreign key to `AspNetUsers`, unknown to the domain). Commands load the wallet and check `IsOwnedBy` before anything else, including the idempotency replay; reads filter by owner in the SQL. Someone else's wallet or transfer gets the same 404 as a missing one, so ids can't be probed. A transfer can go to anyone's wallet, and both sides can see it
 - **Idempotency:** money-moving requests require an `Idempotency-Key` header. The key is stored on the ledger entry with a unique index per wallet, in the same transaction as the money change. Same key and same request → the result is replayed and no money moves; same key, different request → 422. A unique-index race (two requests with the same key, or the same wallet name for one owner, at the same moment) returns 409, and the retry gets the replay
 - **Read committed snapshot isolation (RCSI)** on the database: reads use the last committed row version instead of waiting for locks, so a read can't deadlock with a concurrent update
-- **Exchange rates:** `IExchangeRateProvider` in Application, implemented in Infrastructure as a typed `HttpClient` for [Frankfurter](https://frankfurter.dev/) (ECB rates, published once per working day; no API key). An `ExchangeRate` keeps up to 8 decimals and the date the rate was published. Resilience is hand-written as `DelegatingHandler`s in the client's pipeline (no Polly), tuned for a user waiting on a transfer: retry (GET only, 2 retries with exponential backoff and jitter) → circuit breaker (opens after 5 failures in a row for 30s, then lets one trial call through) → 2s per try, with `HttpClient.Timeout` capping the whole call at 8s. The breaker's state is a keyed singleton, because the factory recycles handlers. Rates are loaded into `IMemoryCache` at startup (one call per base currency) and transfers read only from the cache (`CachedExchangeRateProvider`), so no request waits on Frankfurter; `ExchangeRateRefreshService` (a `BackgroundService` with a `PeriodicTimer`) reloads them every hour. Every successful fetch is also saved to an `ExchangeRates` table (one row per pair); when Frankfurter is down, the saved rates fill the cache instead, so a restart during an outage still has rates. If a rate couldn't be loaded, the API returns 503 and same-currency transfers keep working
+- **Exchange rates:** `IExchangeRateProvider` in Application, implemented in Infrastructure as a typed `HttpClient` for [Frankfurter](https://frankfurter.dev/) (ECB rates, published once per working day; no API key). An `ExchangeRate` keeps up to 8 decimals and the date the rate was published. Resilience is hand-written as `DelegatingHandler`s in the client's pipeline (no Polly), tuned for a user waiting on a transfer: retry (GET only, 2 retries with exponential backoff and jitter) → circuit breaker (opens after 5 failures in a row for 30s, then lets one trial call through) → 2s per try, with `HttpClient.Timeout` capping the whole call at 8s. The breaker's state is a keyed singleton, because the factory recycles handlers. Rates are loaded into `IMemoryCache` at startup (one call per base currency) and transfers read only from the cache (`CachedExchangeRateProvider`), so no request waits on Frankfurter; `ExchangeRateRefreshService` (a `BackgroundService` with a `PeriodicTimer`) reloads them every hour. Every successful fetch is also saved to an `ExchangeRates` table (one row per pair); when Frankfurter is down, the saved rates fill the cache instead, so a restart during an outage still has rates. If a rate couldn't be loaded, the API returns 503 and same-currency transfers keep working. A rate older than `ExchangeRates:MaxRateAgeInDays` is stale: a transfer at that rate gets a 422 carrying the rate, and only goes through when it's sent again with that rate's date as `acceptedRateDate`, so the sender agrees to exactly the rate they saw
+- **Rate limiting:** the built-in middleware, after authentication so signed-in requests are counted per user (anonymous ones per IP): a global fixed window, plus a token bucket on top-ups, withdrawals and transfers. A 429 is ProblemDetails with `Retry-After`. Behind nginx, `X-Forwarded-For` is trusted only from nginx's fixed address, so a client can't fake its IP to get a fresh limit
+- **Observability:** Serilog for structured logs, OpenTelemetry for traces (ASP.NET Core, HttpClient, SqlClient, plus our own spans in the money-moving handlers) and metrics. Everything goes out over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, so the backend (Aspire Dashboard locally) is configuration, not code
 - **Exceptions for broken business rules**, mapped to ProblemDetails (RFC 9457) in one place
 - **`TimeProvider`** for the current time, so time-dependent logic is testable
 - **Enums travel as text** in JSON (`"EUR"`, never `0`)
@@ -178,7 +183,7 @@ CreateWalletRequest (Api) → CreateWalletCommand (Application) → CreateWallet
 
 ## Tech stack
 
-.NET 10 · ASP.NET Core (controllers) · ASP.NET Core Identity · EF Core 10 · SQL Server 2025 · Serilog · Swagger UI · Docker Compose · xUnit v3 · NSubstitute · GitHub Actions
+.NET 10 · ASP.NET Core (controllers) · ASP.NET Core Identity · EF Core 10 · SQL Server 2025 · Serilog · OpenTelemetry · Swagger UI · Docker Compose · Aspire Dashboard · xUnit v3 · NSubstitute · GitHub Actions
 
 Angular 22 · TypeScript · Tailwind CSS 4 · Vitest · ESLint · Prettier · nginx
 
