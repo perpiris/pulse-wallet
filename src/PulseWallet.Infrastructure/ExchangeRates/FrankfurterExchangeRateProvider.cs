@@ -9,7 +9,8 @@ namespace PulseWallet.Infrastructure.ExchangeRates;
 
 // A typed client: IHttpClientFactory creates the HttpClient with the base address and the retry, circuit breaker
 // and timeout handlers from DependencyInjection, so this class has no retry or timeout code of its own.
-public partial class FrankfurterExchangeRateProvider : IExchangeRateProvider
+// Only ExchangeRateCacheLoader calls it; requests read rates from the cache (CachedExchangeRateProvider).
+public partial class FrankfurterExchangeRateProvider
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<FrankfurterExchangeRateProvider> _logger;
@@ -20,9 +21,12 @@ public partial class FrankfurterExchangeRateProvider : IExchangeRateProvider
         _logger = logger;
     }
 
-    public async Task<ExchangeRate> GetLatestRateAsync(Currency from, Currency to, CancellationToken cancellationToken)
+    // Every rate from one currency to all the others, in one call: one request per base currency instead of
+    // one per pair. All or nothing: a missing rate fails the whole call, so the cache never holds half a base.
+    public async Task<IReadOnlyList<ExchangeRate>> GetLatestRatesAsync(Currency from, CancellationToken cancellationToken)
     {
-        Uri requestUri = new Uri($"latest?base={from}&symbols={to}", UriKind.Relative);
+        Currency[] targets = Enum.GetValues<Currency>().Where(currency => currency != from).ToArray();
+        Uri requestUri = new Uri($"latest?base={from}&symbols={string.Join(',', targets)}", UriKind.Relative);
         FrankfurterLatestResponse? response;
 
         try
@@ -40,22 +44,28 @@ public partial class FrankfurterExchangeRateProvider : IExchangeRateProvider
             exception is HttpRequestException or TimeoutException or CircuitBreakerOpenException or JsonException
             || (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
         {
-            LogRateUnavailable(exception, from, to);
-            throw new ExchangeRateUnavailableException(from, to, exception);
+            LogRatesUnavailable(exception, from);
+            throw new ExchangeRateUnavailableException(from, targets[0], exception);
         }
 
-        if (response?.Rates is null || !response.Rates.TryGetValue(to.ToString(), out decimal rate) || rate <= 0)
+        List<ExchangeRate> rates = new List<ExchangeRate>(targets.Length);
+        foreach (Currency to in targets)
         {
-            LogUnexpectedResponse(from, to);
-            throw new ExchangeRateUnavailableException(from, to);
+            if (response?.Rates is null || !response.Rates.TryGetValue(to.ToString(), out decimal rate) || rate <= 0)
+            {
+                LogUnexpectedResponse(from, to);
+                throw new ExchangeRateUnavailableException(from, to);
+            }
+
+            // ECB rates have at most 5 decimals; the rounding only matters if the source ever sends more than we store.
+            rates.Add(ExchangeRate.Create(from, to, decimal.Round(rate, ExchangeRate.MaxDecimals), response.Date));
         }
 
-        // ECB rates have at most 5 decimals; the rounding only matters if the source ever sends more than we store.
-        return ExchangeRate.Create(from, to, decimal.Round(rate, ExchangeRate.MaxDecimals), response.Date);
+        return rates;
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Exchange rate {From}/{To} unavailable from Frankfurter")]
-    private partial void LogRateUnavailable(Exception exception, Currency from, Currency to);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Exchange rates from {From} unavailable from Frankfurter")]
+    private partial void LogRatesUnavailable(Exception exception, Currency from);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Frankfurter returned no usable {From}/{To} rate")]
     private partial void LogUnexpectedResponse(Currency from, Currency to);

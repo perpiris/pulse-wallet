@@ -28,6 +28,7 @@ try
     WebApplication app = builder.Build();
 
     await app.ApplyMigrationsInDevelopmentAsync();
+    await app.LoadExchangeRatesAsync();
 
     // The middleware pipeline stays here, in order: the order matters, so it should be visible at a glance.
     app.UseForwardedHeaders();      // first, so everything after it (request log, rate limiter) sees the real client IP

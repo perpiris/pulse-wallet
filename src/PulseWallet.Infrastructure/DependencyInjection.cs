@@ -63,7 +63,13 @@ public static class DependencyInjection
         // 2s per try, 2 retries with backoff, 8s in total (HttpClient.Timeout wraps all the handlers).
         // Handlers run in the order they're added, each wrapping the next: retry → breaker → attempt timeout → network.
         // The breaker sits inside the retry so it counts every single try, and a timed-out try counts as a failure.
-        services.AddHttpClient<IExchangeRateProvider, FrankfurterExchangeRateProvider>(client =>
+        // Handlers only read the cache. The cached provider has no state of its own (IMemoryCache is a singleton),
+        // so it can be a singleton too. Frankfurter is registered as its concrete type, used only by the loader.
+        services.AddMemoryCache();
+        services.AddSingleton<IExchangeRateProvider, CachedExchangeRateProvider>();
+        services.AddTransient<ExchangeRateCacheLoader>();
+
+        services.AddHttpClient<FrankfurterExchangeRateProvider>(client =>
             {
                 client.BaseAddress = baseAddress;
                 client.Timeout = TimeSpan.FromSeconds(8);

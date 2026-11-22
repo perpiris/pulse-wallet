@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using PulseWallet.Infrastructure.ExchangeRates;
 using PulseWallet.Infrastructure.Identity;
 using PulseWallet.Infrastructure.Persistence;
 
@@ -43,6 +44,16 @@ public static class WebApplicationExtensions
         });
 
         return app;
+    }
+
+    // Before app.Run, so the server only starts taking requests once the rates are in the cache.
+    // If the provider is down this waits for its retries and timeouts (up to about 15 seconds), then starts without the rates.
+    public static async Task LoadExchangeRatesAsync(this WebApplication app)
+    {
+        // The loader is transient (it holds a typed HttpClient) and there's no request yet, so a scope is created for it.
+        await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
+        ExchangeRateCacheLoader loader = scope.ServiceProvider.GetRequiredService<ExchangeRateCacheLoader>();
+        await loader.LoadAsync(app.Lifetime.ApplicationStopping);
     }
 
     // Development only: a fresh `docker compose up` gets a working database with no manual step.
