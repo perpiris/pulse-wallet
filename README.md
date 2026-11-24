@@ -121,6 +121,14 @@ Every open item links to its [GitHub issue](https://github.com/perpiris/pulse-wa
 - [ ] Roles and permissions (Customer, Admin), seeded; admin endpoints ([#14](https://github.com/perpiris/pulse-wallet/issues/14))
 - [ ] Persist Data Protection keys so sign-ins survive restarts ([#26](https://github.com/perpiris/pulse-wallet/issues/26))
 
+**HTTP standards**
+- [ ] `Cache-Control: no-store` on authenticated responses ([#35](https://github.com/perpiris/pulse-wallet/issues/35))
+- [ ] `ETag` and `304 Not Modified` on wallet reads ([#36](https://github.com/perpiris/pulse-wallet/issues/36))
+- [ ] `If-Match` on money-moving requests: 412 / 428 ([#40](https://github.com/perpiris/pulse-wallet/issues/40), after [#36](https://github.com/perpiris/pulse-wallet/issues/36))
+- [ ] `Retry-After` on 503 responses ([#37](https://github.com/perpiris/pulse-wallet/issues/37))
+- [ ] Verify `WWW-Authenticate` on 401 and `Allow` on 405 ([#38](https://github.com/perpiris/pulse-wallet/issues/38))
+- [ ] `406 Not Acceptable` for unsupported `Accept` headers ([#39](https://github.com/perpiris/pulse-wallet/issues/39))
+
 **Frontend**
 - [x] Choose a framework: Angular
 - [x] Angular app (Tailwind, Vitest) served by nginx, started with the rest of the stack by Docker Compose
